@@ -184,24 +184,99 @@
                 </div>
                 <h3 class="text-xl font-outfit font-bold text-slate-700 mb-4 px-2">Tus Logros</h3>
                 <div id="achievements-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 pb-6"></div>
+                
+                <div class="px-2 pb-8 mt-6 border-t border-slate-100 pt-6">
+                    <button id="btn-logout-settings"
+                            class="w-full flex items-center justify-center gap-3 text-red-500 bg-red-50 hover:bg-red-100 p-4 rounded-2xl transition-colors font-bold shadow-sm">
+                            <i data-lucide="log-out" class="w-5 h-5"></i> Cerrar Sesión
+                    </button>
+                    <p class="text-center text-xs text-slate-400 mt-4">EcoDex v9.0 - Dashboard</p>
+                </div>
             </div>
 
-            <!-- VISTA: AJUSTES -->
-            <div id="view-settings" class="hidden w-full transition-opacity duration-300">
-                <h2 class="text-2xl font-outfit font-bold text-slate-700 mb-4 px-2">Ajustes</h2>
-                <div
-                    class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-100">
-                    <div class="p-6">
-                        <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Cuenta</h3>
-                        <button id="btn-logout-settings"
-                            class="w-full flex items-center justify-between text-red-500 hover:bg-red-50 p-3 rounded-xl transition-colors font-medium">
-                            <div class="flex items-center gap-3"><i data-lucide="log-out" class="w-5 h-5"></i> Cerrar
-                                Sesión</div>
-                        </button>
+            <!-- VISTA: HOME (DASHBOARD) -->
+            <div id="view-home" class="hidden w-full transition-opacity duration-300 pb-20">
+                <div class="px-2 mb-6 mt-2">
+                    <h2 class="text-3xl font-outfit font-bold text-slate-800">Inicio</h2>
+                    <p class="text-slate-500 text-sm">Bienvenido a tu panel de biodiversidad</p>
+                </div>
+                
+                <!-- Especie del Día -->
+                <div class="px-2 mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <i data-lucide="calendar-heart" class="w-5 h-5 text-emerald-500"></i> Especie del Día
+                        </h3>
+                        <span class="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full" id="sotd-date">Hoy</span>
                     </div>
-                    <div class="p-6">
-                        <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Acerca de</h3>
-                        <p class="text-sm text-slate-500">EcoDex v8.0 - Fotos Extra (Wikimedia Commons)</p>
+                    
+                    <div id="sotd-card" class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer hover:shadow-md transition-all group relative">
+                        <div class="h-48 bg-slate-200 relative overflow-hidden">
+                            <img id="sotd-img" src="https://images.unsplash.com/photo-1546182990-dffeafbe841d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Especie del día" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                            <div class="absolute bottom-4 left-4 right-4">
+                                <div class="text-xs font-bold text-emerald-300 uppercase tracking-widest mb-1" id="sotd-category">Cargando...</div>
+                                <h4 class="text-2xl font-outfit font-bold text-white leading-tight mb-1" id="sotd-name">Cargando Especie...</h4>
+                                <p class="text-slate-300 text-sm italic" id="sotd-sci"></p>
+                            </div>
+                        </div>
+                        <div class="p-4 flex items-center justify-between bg-emerald-50/50">
+                            <span class="text-sm font-medium text-slate-600">Toca para ver datos curiosos</span>
+                            <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estadísticas -->
+                <div class="px-2 mb-6">
+                    <h3 class="text-lg font-bold text-slate-700 flex items-center gap-2 mb-3">
+                        <i data-lucide="bar-chart" class="w-5 h-5 text-blue-500"></i> Tus Estadísticas
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                            <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
+                                <i data-lucide="scan" class="w-5 h-5"></i>
+                            </div>
+                            <div class="text-2xl font-outfit font-bold text-slate-800" id="stat-total-scans">0</div>
+                            <div class="text-xs text-slate-500 font-medium">Descubrimientos</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center text-center">
+                            <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-2">
+                                <i data-lucide="star" class="w-5 h-5"></i>
+                            </div>
+                            <div class="text-2xl font-outfit font-bold text-slate-800" id="stat-rare">0</div>
+                            <div class="text-xs text-slate-500 font-medium">Especies Raras</div>
+                        </div>
+                        <!-- Misión Diaria -->
+                        <div class="col-span-2 bg-gradient-to-r from-emerald-500 to-teal-500 p-5 rounded-3xl shadow-md text-white relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                            <div class="flex items-center gap-4 relative z-10">
+                                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 shadow-inner">
+                                    <i data-lucide="target" class="w-6 h-6 text-white drop-shadow"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="text-[10px] font-bold text-emerald-100 uppercase tracking-widest mb-1">Misión Diaria</div>
+                                    <div class="text-lg font-outfit font-bold leading-tight mb-2">Escanea 1 especie nueva</div>
+                                    <div class="w-full bg-black/20 rounded-full h-2 overflow-hidden shadow-inner">
+                                        <div class="bg-white h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="mission-progress"></div>
+                                    </div>
+                                    <div class="text-[10px] font-medium text-emerald-100 mt-1.5 text-right" id="mission-text">0 / 1 completado</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Consejo Ecológico -->
+                        <div class="col-span-2 bg-amber-50 p-5 rounded-3xl border border-amber-100/60 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow cursor-default">
+                            <div class="w-10 h-10 bg-gradient-to-br from-amber-200 to-amber-300 text-amber-700 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                                <i data-lucide="leaf" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-amber-800 mb-1">Eco-Tip del Día</h4>
+                                <p class="text-xs text-amber-700/80 leading-relaxed font-medium">Recuerda no dejar basura en tus expediciones. ¡Un investigador real respeta el hábitat de las especies que estudia!</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -231,9 +306,9 @@
         <button class="nav-btn w-full flex flex-col items-center gap-1 nav-inactive" data-target="view-profile">
             <i data-lucide="user" class="w-6 h-6"></i><span class="text-[9px] uppercase tracking-wide">Perfil</span>
         </button>
-        <button class="nav-btn w-full flex flex-col items-center gap-1 nav-inactive" data-target="view-settings">
-            <i data-lucide="settings" class="w-6 h-6"></i><span
-                class="text-[9px] uppercase tracking-wide">Ajustes</span>
+        <button class="nav-btn w-full flex flex-col items-center gap-1 nav-inactive" data-target="view-home">
+            <i data-lucide="home" class="w-6 h-6"></i><span
+                class="text-[9px] uppercase tracking-wide">Inicio</span>
         </button>
     </div>
 
@@ -523,6 +598,41 @@
             <button id="btn-close-ach"
                 class="bg-white text-indigo-700 font-bold py-3 px-8 rounded-xl w-full hover:bg-indigo-50 transition-colors shadow-lg">Coleccionar
                 Trofeo</button>
+        </div>
+    </div>
+
+    <!-- Modal Especie del Día (SOTD) -->
+    <div id="sotd-modal" class="hidden fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 transition-opacity">
+        <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="relative h-56 bg-slate-100 shrink-0">
+                <img id="sotd-modal-img" src="" alt="Especie del día" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                <button id="btn-close-sotd" class="absolute top-4 right-4 z-20 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+                <div class="absolute bottom-4 left-4 z-20">
+                    <h2 id="sotd-modal-name" class="text-3xl font-outfit font-bold text-white leading-tight mb-1">Nombre</h2>
+                    <p id="sotd-modal-sci" class="text-slate-300 italic text-sm font-medium">Científico</p>
+                </div>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <h4 class="text-xs font-bold text-emerald-500 uppercase tracking-wider mb-3 flex items-center gap-1">
+                    <i data-lucide="lightbulb" class="w-4 h-4"></i> Dato Curioso
+                </h4>
+                <p id="sotd-modal-fact" class="text-slate-700 text-lg leading-relaxed font-medium bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                    Dato curioso aquí.
+                </p>
+                
+                <div class="mt-6 flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <div>
+                        <span class="text-xs text-slate-500 block">Día del año</span>
+                        <span class="text-lg font-bold text-slate-700" id="sotd-modal-day">1/366</span>
+                    </div>
+                    <button id="btn-sotd-search" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-emerald-500 transition-colors">
+                        <i data-lucide="search" class="w-4 h-4"></i> Wikipedia
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

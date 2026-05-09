@@ -43,7 +43,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('nav-active'); b.classList.add('nav-inactive'); });
         btn.classList.add('nav-active'); btn.classList.remove('nav-inactive');
-        ['view-ecodex', 'view-leaderboard', 'view-profile', 'view-settings'].forEach(id => {
+        ['view-ecodex', 'view-leaderboard', 'view-profile', 'view-home'].forEach(id => {
             const view = document.getElementById(id);
             if (view) view.classList.add('hidden');
         });
@@ -91,6 +91,7 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('bottom-nav')?.classList.remove('hidden'); document.getElementById('bottom-nav')?.classList.add('grid');
         await initializeUserProfile(user);
         loadPrivateData(user.uid); loadPublicLeaderboard();
+        loadSpeciesOfTheDay();
     } else {
         currentUser = null; currentUserProfile = null; globalScans = [];
         document.getElementById('login-screen')?.classList.remove('hidden');
@@ -172,6 +173,7 @@ function filterAndRenderEcodex() {
         if (currentSort === 'name') return (a.name || '').localeCompare(b.name || '');
         return 0;
     });
+    updateDashboardStats();
     renderEcodex(filtered, globalScans.length);
 }
 
@@ -349,6 +351,89 @@ async function openSpeciesDetail(data) {
 
 document.getElementById('btn-close-detail')?.addEventListener('click', () => {
     const m = document.getElementById('species-detail-modal'); if (m) m.classList.add('hidden');
+});
+
+// --- DASHBOARD (HOME) LOGIC ---
+let speciesList = [];
+
+async function loadSpeciesOfTheDay() {
+    try {
+        if (speciesList.length === 0) {
+            const res = await fetch('species.json');
+            speciesList = await res.json();
+        }
+        
+        // Calculate day of the year (1-366)
+        const now = new Date();
+        const start = new Date(now.getFullYear(), 0, 0);
+        const diff = (now - start) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+        const oneDay = 1000 * 60 * 60 * 24;
+        const dayOfYear = Math.floor(diff / oneDay);
+        
+        // Get the species for today
+        const speciesIndex = (dayOfYear - 1) % speciesList.length;
+        const todaySpecies = speciesList[speciesIndex];
+        
+        // Update Card
+        const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setTxt('sotd-category', todaySpecies.categoria);
+        setTxt('sotd-name', todaySpecies.nombre);
+        setTxt('sotd-sci', todaySpecies.cientifico);
+        
+        // Update Modal
+        setTxt('sotd-modal-name', todaySpecies.nombre);
+        setTxt('sotd-modal-sci', todaySpecies.cientifico);
+        setTxt('sotd-modal-fact', todaySpecies.dato);
+        setTxt('sotd-modal-day', `${dayOfYear}/366`);
+        
+        const btnSearch = document.getElementById('btn-sotd-search');
+        if(btnSearch) btnSearch.onclick = () => { window.open(`https://es.wikipedia.org/wiki/${encodeURIComponent(todaySpecies.cientifico)}`, '_blank'); };
+        
+        // Fetch Image
+        const imgs = await fetchCommonsImages(todaySpecies.cientifico);
+        if (imgs && imgs.length > 0) {
+            const imgEl = document.getElementById('sotd-img');
+            const modEl = document.getElementById('sotd-modal-img');
+            if(imgEl) imgEl.src = imgs[0];
+            if(modEl) modEl.src = imgs[0];
+        }
+    } catch (e) {
+        console.error("Error loading species of the day", e);
+    }
+}
+
+function updateDashboardStats() {
+    if (!globalScans) return;
+    const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    setTxt('stat-total-scans', globalScans.length);
+    
+    const rareCount = globalScans.filter(s => ['NT', 'VU', 'EN', 'CR', 'EW', 'EX'].includes(s.status)).length;
+    setTxt('stat-rare', rareCount);
+    
+    // Mission Progress
+    const todayStr = new Date().toDateString();
+    const todayScans = globalScans.filter(s => {
+        if(!s.timestamp) return false;
+        let d;
+        if(s.timestamp.toMillis) d = new Date(s.timestamp.toMillis());
+        else if(s.timestamp.seconds) d = new Date(s.timestamp.seconds * 1000);
+        else d = new Date();
+        return d.toDateString() === todayStr;
+    });
+    
+    const count = Math.min(todayScans.length, 1);
+    const mProgress = document.getElementById('mission-progress');
+    const mText = document.getElementById('mission-text');
+    if(mProgress) mProgress.style.width = (count * 100) + '%';
+    if(mText) mText.textContent = `${count} / 1 completado`;
+}
+
+document.getElementById('sotd-card')?.addEventListener('click', () => {
+    document.getElementById('sotd-modal')?.classList.remove('hidden');
+});
+
+document.getElementById('btn-close-sotd')?.addEventListener('click', () => {
+    document.getElementById('sotd-modal')?.classList.add('hidden');
 });
 
 // --- CÁMARA (4K & Zoom Support) ---
@@ -710,17 +795,6 @@ function playAudio(type) {
     else if (type === 'critical') { [0, 400, 800].forEach(d => playTone(300, 'sawtooth', 0.3, 0.3, d)); }
     else if (type === 'achievement') { playTone(440, 'square', 0.1, 0.2); playTone(554.37, 'square', 0.1, 0.2, 100); playTone(659.25, 'square', 0.4, 0.2, 200); }
     else if (type === 'normal') { playTone(440, 'sine', 0.2, 0.3); playTone(554, 'sine', 0.3, 0.3, 100); }
-}
-
-// --- Service Worker para PWA ---
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then(registration => {
-      console.log('ServiceWorker registrado con éxito en el scope:', registration.scope);
-    }).catch(err => {
-      console.log('Error al registrar el ServiceWorker:', err);
-    });
-  });
 }
 
 // --- Banner de Instalación PWA ---
