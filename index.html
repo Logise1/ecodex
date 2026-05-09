@@ -249,20 +249,50 @@
                             <div class="text-2xl font-outfit font-bold text-slate-800" id="stat-rare">0</div>
                             <div class="text-xs text-slate-500 font-medium">Especies Raras</div>
                         </div>
-                        <!-- Misión Diaria -->
-                        <div class="col-span-2 bg-gradient-to-r from-emerald-500 to-teal-500 p-5 rounded-3xl shadow-md text-white relative overflow-hidden group">
-                            <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                            <div class="flex items-center gap-4 relative z-10">
-                                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 shrink-0 shadow-inner">
-                                    <i data-lucide="target" class="w-6 h-6 text-white drop-shadow"></i>
+                        <!-- Misiones Diarias -->
+                        <div class="col-span-2 bg-slate-800 p-6 rounded-3xl shadow-lg text-white relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                            
+                            <div class="flex items-center gap-3 mb-5 relative z-10">
+                                <div class="w-10 h-10 bg-slate-700/80 rounded-xl flex items-center justify-center border border-slate-600 shrink-0">
+                                    <i data-lucide="target" class="w-5 h-5 text-emerald-400"></i>
                                 </div>
-                                <div class="flex-1">
-                                    <div class="text-[10px] font-bold text-emerald-100 uppercase tracking-widest mb-1">Misión Diaria</div>
-                                    <div class="text-lg font-outfit font-bold leading-tight mb-2">Escanea 1 especie nueva</div>
-                                    <div class="w-full bg-black/20 rounded-full h-2 overflow-hidden shadow-inner">
-                                        <div class="bg-white h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="mission-progress"></div>
+                                <div>
+                                    <h3 class="text-lg font-outfit font-bold tracking-wide leading-tight">Misiones Diarias</h3>
+                                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Retos del explorador</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4 relative z-10">
+                                <!-- Misión 1 -->
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1.5 font-medium">
+                                        <span class="text-slate-300">Escanea 3 especies hoy</span>
+                                        <span class="font-bold text-emerald-400" id="m1-text">0/3</span>
                                     </div>
-                                    <div class="text-[10px] font-medium text-emerald-100 mt-1.5 text-right" id="mission-text">0 / 1 completado</div>
+                                    <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden shadow-inner">
+                                        <div class="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="m1-progress"></div>
+                                    </div>
+                                </div>
+                                <!-- Misión 2 -->
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1.5 font-medium">
+                                        <span class="text-slate-300">Encuentra 1 especie Rara/Crítica</span>
+                                        <span class="font-bold text-amber-400" id="m2-text">0/1</span>
+                                    </div>
+                                    <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden shadow-inner">
+                                        <div class="bg-gradient-to-r from-amber-500 to-amber-400 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="m2-progress"></div>
+                                    </div>
+                                </div>
+                                <!-- Misión 3 -->
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1.5 font-medium">
+                                        <span class="text-slate-300">Consigue 100 XP hoy</span>
+                                        <span class="font-bold text-blue-400" id="m3-text">0/100</span>
+                                    </div>
+                                    <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden shadow-inner">
+                                        <div class="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="m3-progress"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

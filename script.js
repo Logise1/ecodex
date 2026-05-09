@@ -410,7 +410,7 @@ function updateDashboardStats() {
     const rareCount = globalScans.filter(s => ['NT', 'VU', 'EN', 'CR', 'EW', 'EX'].includes(s.status)).length;
     setTxt('stat-rare', rareCount);
     
-    // Mission Progress
+    // Mission Progress (3 Missions)
     const todayStr = new Date().toDateString();
     const todayScans = globalScans.filter(s => {
         if(!s.timestamp) return false;
@@ -421,11 +421,28 @@ function updateDashboardStats() {
         return d.toDateString() === todayStr;
     });
     
-    const count = Math.min(todayScans.length, 1);
-    const mProgress = document.getElementById('mission-progress');
-    const mText = document.getElementById('mission-text');
-    if(mProgress) mProgress.style.width = (count * 100) + '%';
-    if(mText) mText.textContent = `${count} / 1 completado`;
+    // M1: 3 Scans today
+    const m1Count = Math.min(todayScans.length, 3);
+    const m1Prog = document.getElementById('m1-progress');
+    const m1Txt = document.getElementById('m1-text');
+    if(m1Prog) m1Prog.style.width = ((m1Count / 3) * 100) + '%';
+    if(m1Txt) m1Txt.textContent = `${m1Count}/3`;
+
+    // M2: 1 Rare/Critical species today
+    const rareToday = todayScans.filter(s => ['NT', 'VU', 'EN', 'CR', 'EW', 'EX'].includes(s.status)).length;
+    const m2Count = Math.min(rareToday, 1);
+    const m2Prog = document.getElementById('m2-progress');
+    const m2Txt = document.getElementById('m2-text');
+    if(m2Prog) m2Prog.style.width = ((m2Count / 1) * 100) + '%';
+    if(m2Txt) m2Txt.textContent = `${m2Count}/1`;
+
+    // M3: 100 XP today
+    const xpToday = todayScans.reduce((acc, curr) => acc + (curr.xpEarned || 0), 0);
+    const m3Count = Math.min(xpToday, 100);
+    const m3Prog = document.getElementById('m3-progress');
+    const m3Txt = document.getElementById('m3-text');
+    if(m3Prog) m3Prog.style.width = ((m3Count / 100) * 100) + '%';
+    if(m3Txt) m3Txt.textContent = `${m3Count}/100`;
 }
 
 document.getElementById('sotd-card')?.addEventListener('click', () => {
