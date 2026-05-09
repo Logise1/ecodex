@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#059669">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
     <title>EcoDex - Colección de Biodiversidad</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -14,6 +17,20 @@
 </head>
 
 <body class="min-h-screen flex flex-col items-center">
+
+    <!-- Banner de Instalación PWA (Móviles) -->
+    <div id="pwa-install-banner" class="hidden w-full bg-emerald-600 text-white px-4 py-3 justify-between items-center z-[100] shadow-md">
+        <div class="flex items-center gap-3 cursor-pointer flex-1" id="btn-install-pwa">
+            <img src="icon.png" alt="Icono" class="w-8 h-8 rounded-lg shadow-sm bg-white p-0.5 object-cover">
+            <div>
+                <p class="text-sm font-bold leading-tight">Instalar EcoDex</p>
+                <p class="text-[11px] text-emerald-100 leading-tight">Añadir a la pantalla de inicio</p>
+            </div>
+        </div>
+        <button id="btn-close-pwa-banner" class="text-emerald-200 hover:text-white p-2 ml-2 transition-colors">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+    </div>
 
     <!-- 1. Pantalla de Login -->
     <div id="login-screen"

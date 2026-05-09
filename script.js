@@ -243,7 +243,7 @@ function renderLeaderboard(users) {
         list.innerHTML += `
                     <li class="px-6 py-4 flex items-center gap-4 ${isMe ? 'bg-emerald-50/50' : 'hover:bg-slate-50'} transition-colors">
                         ${rankTrophy}
-                        <img src="${u.photoId ? `https://greenbase.arielcapdevila.com/file/${u.photoId}` : u.fallbackPhoto}" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-slate-100" onerror="this.src='${u.fallbackPhoto}'">
+                        <img src="${u.photoId ? `https://greenbase.arielcapdevila.com/file/${u.photoId}` : u.fallbackPhoto}" class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover bg-slate-100" onerror="this.onerror=null; this.src='https://api.dicebear.com/7.x/bottts/svg?seed=${u.uid}'">
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-bold text-slate-800 truncate">${u.displayName} ${isMe ? '<span class="text-[10px] text-emerald-600 font-normal ml-1 bg-emerald-100 px-1.5 py-0.5 rounded">(Tú)</span>' : ''}</p>
                             <p class="text-xs text-slate-500 font-medium">Nivel ${u.level || getLevelFromXP(u.xp)}</p>
@@ -711,3 +711,68 @@ function playAudio(type) {
     else if (type === 'achievement') { playTone(440, 'square', 0.1, 0.2); playTone(554.37, 'square', 0.1, 0.2, 100); playTone(659.25, 'square', 0.4, 0.2, 200); }
     else if (type === 'normal') { playTone(440, 'sine', 0.2, 0.3); playTone(554, 'sine', 0.3, 0.3, 100); }
 }
+
+// --- Service Worker para PWA ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(registration => {
+      console.log('ServiceWorker registrado con éxito en el scope:', registration.scope);
+    }).catch(err => {
+      console.log('Error al registrar el ServiceWorker:', err);
+    });
+  });
+}
+
+// --- Banner de Instalación PWA ---
+let deferredPrompt;
+const installBanner = document.getElementById('pwa-install-banner');
+const btnInstall = document.getElementById('btn-install-pwa');
+const btnCloseBanner = document.getElementById('btn-close-pwa-banner');
+
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+function checkShowBanner() {
+    if (window.innerWidth < 768 && !isStandalone && !localStorage.getItem('pwa-banner-dismissed')) {
+        installBanner?.classList.remove('hidden');
+        installBanner?.classList.add('flex');
+    }
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    checkShowBanner();
+});
+
+// Soporte manual para iOS (que no dispara beforeinstallprompt)
+if (isIOS) {
+    checkShowBanner();
+    btnInstall?.addEventListener('click', () => {
+        alert("Para instalar en iOS:\nToca el icono 'Compartir' en la barra inferior de Safari y luego selecciona 'Añadir a la pantalla de inicio'.");
+    });
+} else {
+    btnInstall?.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installBanner?.classList.add('hidden');
+                installBanner?.classList.remove('flex');
+            }
+            deferredPrompt = null;
+        }
+    });
+}
+
+btnCloseBanner?.addEventListener('click', () => {
+    installBanner?.classList.add('hidden');
+    installBanner?.classList.remove('flex');
+    localStorage.setItem('pwa-banner-dismissed', 'true');
+});
+
+window.addEventListener('appinstalled', () => {
+    installBanner?.classList.add('hidden');
+    installBanner?.classList.remove('flex');
+    deferredPrompt = null;
+});
