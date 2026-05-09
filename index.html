@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoDex - Colección de Biodiversidad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="min-h-screen flex flex-col items-center">
+
+    <!-- 1. Pantalla de Login -->
+    <div id="login-screen"
+        class="flex-1 w-full flex flex-col items-center justify-center p-6 z-50 fixed inset-0 bg-slate-50">
+        <div class="glass-card max-w-md w-full p-8 rounded-3xl text-center">
+            <div
+                class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-600 shadow-inner">
+                <i data-lucide="leaf" class="w-10 h-10"></i>
+            </div>
+            <h1 class="text-4xl font-outfit font-bold text-slate-800 mb-2">EcoDex</h1>
+            <p class="text-slate-500 mb-8">La enciclopedia interactiva de biodiversidad.</p>
+            <button id="btn-login"
+                class="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-3 transition-colors shadow-sm">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="w-6 h-6"> Iniciar
+                sesión
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. Pantalla Principal de la App -->
+    <div id="app-screen" class="hidden w-full max-w-5xl px-4 py-6 flex-col flex-1">
+
+        <header
+            class="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 sticky top-4 z-30">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shadow-inner">
+                    <i data-lucide="scan-face"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-outfit font-bold text-slate-800 leading-none">EcoDex</h1>
+                    <p class="text-xs text-emerald-600 font-semibold uppercase tracking-wide">Nivel <span
+                            id="header-level">1</span></p>
+                </div>
+            </div>
+        </header>
+
+        <div id="view-container" class="w-full relative min-h-[500px]">
+
+            <!-- VISTA: ECODEX (Colección) -->
+            <div id="view-ecodex" class="w-full transition-opacity duration-300">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 px-2 gap-4">
+                    <h2 class="text-2xl font-outfit font-bold text-slate-700">Tu Colección</h2>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <div class="relative flex-1 sm:flex-none">
+                            <select id="sort-select"
+                                class="w-full appearance-none bg-white border border-slate-200 text-slate-600 text-sm rounded-xl py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="date_desc">Más recientes</option>
+                                <option value="date_asc">Más antiguos</option>
+                                <option value="status">Estado Conservación</option>
+                                <option value="name">Alfabéticamente</option>
+                            </select>
+                            <i data-lucide="chevron-down"
+                                class="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none"></i>
+                        </div>
+                        <span id="species-count"
+                            class="text-sm font-medium text-emerald-700 bg-emerald-100 py-2 px-3 rounded-xl border border-emerald-200 shadow-sm whitespace-nowrap">0
+                            descubiertas</span>
+                    </div>
+                </div>
+
+                <div class="w-full overflow-x-auto hide-scrollbar mb-6 px-2 pb-2">
+                    <div id="category-tabs" class="flex gap-2 min-w-max">
+                        <button
+                            class="cat-tab tab-active px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Todos">Todos</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Mamíferos">Mamíferos</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Aves">Aves</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Reptiles">Reptiles</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Anfibios">Anfibios</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Peces">Peces</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Insectos">Insectos</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Plantas">Plantas</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Hongos">Hongos</button>
+                        <button
+                            class="cat-tab tab-inactive px-4 py-1.5 rounded-full text-sm font-medium border transition-colors shadow-sm"
+                            data-cat="Otro">Otro</button>
+                    </div>
+                </div>
+
+                <div id="ecodex-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-4"></div>
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-20 text-center">
+                    <div
+                        class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center text-slate-300 mb-4">
+                        <i data-lucide="camera-off" class="w-12 h-12"></i></div>
+                    <h3 class="text-xl font-outfit font-bold text-slate-600 mb-2">No hay resultados</h3>
+                    <p class="text-slate-400 max-w-sm">No has documentado ninguna especie en esta categoría aún.</p>
+                </div>
+            </div>
+
+            <!-- VISTA: CLASIFICACIÓN -->
+            <div id="view-leaderboard" class="hidden w-full transition-opacity duration-300">
+                <h2 class="text-2xl font-outfit font-bold text-slate-700 mb-4 px-2">Ranking Global</h2>
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <span class="text-sm font-bold text-slate-400 uppercase tracking-wider">Top
+                            Investigadores</span>
+                        <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+                    </div>
+                    <ul id="leaderboard-list" class="divide-y divide-slate-50"></ul>
+                </div>
+            </div>
+
+            <!-- VISTA: PERFIL -->
+            <div id="view-profile" class="hidden w-full transition-opacity duration-300">
+                <div
+                    class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 mb-6 text-center relative overflow-hidden">
+                    <div
+                        class="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-emerald-400 to-teal-500 opacity-20">
+                    </div>
+                    <div class="relative inline-block mt-4 mb-4 group cursor-pointer" id="avatar-container">
+                        <img id="profile-avatar" src="" alt="Avatar"
+                            class="w-28 h-28 rounded-full border-4 border-white shadow-lg object-cover relative z-10 bg-slate-100">
+                        <div
+                            class="absolute inset-0 bg-black/40 rounded-full z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i data-lucide="camera" class="text-white w-8 h-8"></i></div>
+                        <input type="file" id="pfp-input" accept="image/*" class="hidden">
+                    </div>
+                    <h2 id="profile-name" class="text-3xl font-outfit font-bold text-slate-800 mb-1">Usuario</h2>
+                    <p class="text-slate-500 font-medium mb-6">Investigador Nivel <span
+                            id="profile-level-badge">1</span></p>
+
+                    <div class="max-w-md mx-auto bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        <div class="flex justify-between text-sm font-bold text-slate-600 mb-2">
+                            <span>Nivel <span id="bar-current-lvl">1</span></span>
+                            <span class="text-emerald-600"><span id="bar-current-xp">0</span> / <span
+                                    id="bar-next-xp">100</span> XP</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-4 overflow-hidden shadow-inner">
+                            <div id="xp-progress-bar"
+                                class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-4 rounded-full transition-all duration-1000 ease-out"
+                                style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <h3 class="text-xl font-outfit font-bold text-slate-700 mb-4 px-2">Tus Logros</h3>
+                <div id="achievements-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4 pb-6"></div>
+            </div>
+
+            <!-- VISTA: AJUSTES -->
+            <div id="view-settings" class="hidden w-full transition-opacity duration-300">
+                <h2 class="text-2xl font-outfit font-bold text-slate-700 mb-4 px-2">Ajustes</h2>
+                <div
+                    class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                    <div class="p-6">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Cuenta</h3>
+                        <button id="btn-logout-settings"
+                            class="w-full flex items-center justify-between text-red-500 hover:bg-red-50 p-3 rounded-xl transition-colors font-medium">
+                            <div class="flex items-center gap-3"><i data-lucide="log-out" class="w-5 h-5"></i> Cerrar
+                                Sesión</div>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase mb-4">Acerca de</h3>
+                        <p class="text-sm text-slate-500">EcoDex v8.0 - Fotos Extra (Wikimedia Commons)</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Navegación Inferior -->
+    <div id="bottom-nav"
+        class="hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 pb-safe pt-2 px-1 grid grid-cols-5 h-[80px] items-center justify-items-center z-40 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+        <button class="nav-btn w-full flex flex-col items-center gap-1 nav-active" data-target="view-ecodex">
+            <i data-lucide="book-open" class="w-6 h-6"></i><span
+                class="text-[9px] uppercase tracking-wide">EcoDex</span>
+        </button>
+        <button class="nav-btn w-full flex flex-col items-center gap-1 nav-inactive" data-target="view-leaderboard">
+            <i data-lucide="bar-chart-2" class="w-6 h-6"></i><span
+                class="text-[9px] uppercase tracking-wide">Ranking</span>
+        </button>
+
+        <div class="w-full flex justify-center relative -top-6">
+            <button id="btn-open-camera"
+                class="bg-emerald-600 hover:bg-emerald-500 text-white w-16 h-16 rounded-full shadow-xl shadow-emerald-200/50 flex items-center justify-center transition-transform hover:scale-110 border-4 border-white relative group">
+                <i data-lucide="scan" class="w-7 h-7"></i>
+            </button>
+        </div>
+
+        <button class="nav-btn w-full flex flex-col items-center gap-1 nav-inactive" data-target="view-profile">
+            <i data-lucide="user" class="w-6 h-6"></i><span class="text-[9px] uppercase tracking-wide">Perfil</span>
+        </button>
+        <button class="nav-btn w-full flex flex-col items-center gap-1 nav-inactive" data-target="view-settings">
+            <i data-lucide="settings" class="w-6 h-6"></i><span
+                class="text-[9px] uppercase tracking-wide">Ajustes</span>
+        </button>
+    </div>
+
+    <!-- MODAL DE CÁMARA (4K & Zoom Support) -->
+    <div id="camera-modal" class="hidden fixed inset-0 z-[150] bg-black flex flex-col items-center justify-center">
+        <div
+            class="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
+            <button id="btn-close-camera" class="text-white p-2 rounded-full hover:bg-white/20 transition-colors"><i
+                    data-lucide="x" class="w-8 h-8"></i></button>
+            <button id="btn-flip-camera"
+                class="text-white p-2 rounded-full hover:bg-white/20 transition-colors bg-white/10 backdrop-blur"
+                title="Cambiar Cámara">
+                <i data-lucide="refresh-ccw" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <div class="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
+            <video id="camera-feed" class="absolute min-w-full min-h-full object-cover" playsinline autoplay
+                muted></video>
+
+            <div
+                class="absolute w-64 h-64 border-2 border-emerald-500/50 rounded-3xl pointer-events-none relative flex items-center justify-center shadow-[0_0_0_9999px_rgba(0,0,0,0.4)] z-10">
+                <div
+                    class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-3xl -mt-1 -ml-1">
+                </div>
+                <div
+                    class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-3xl -mt-1 -mr-1">
+                </div>
+                <div
+                    class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-3xl -mb-1 -ml-1">
+                </div>
+                <div
+                    class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-3xl -mb-1 -mr-1">
+                </div>
+            </div>
+
+            <!-- Controles de Zoom -->
+            <div id="zoom-controls" class="hidden absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-20">
+                <button id="btn-zoom-in"
+                    class="w-12 h-12 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur border border-white/20 hover:bg-black/70 transition-colors active:scale-95 shadow-lg">
+                    <i data-lucide="zoom-in" class="w-6 h-6"></i>
+                </button>
+                <div class="bg-black/50 text-white text-xs font-bold px-2 py-1 rounded text-center backdrop-blur"
+                    id="zoom-level-text">1.0x</div>
+                <button id="btn-zoom-out"
+                    class="w-12 h-12 bg-black/50 text-white rounded-full flex items-center justify-center backdrop-blur border border-white/20 hover:bg-black/70 transition-colors active:scale-95 shadow-lg">
+                    <i data-lucide="zoom-out" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+        <canvas id="camera-canvas" class="hidden"></canvas>
+
+        <div
+            class="absolute bottom-0 left-0 w-full p-8 flex justify-center items-center z-20 bg-gradient-to-t from-black/80 to-transparent">
+            <button id="btn-capture"
+                class="w-20 h-20 bg-white/20 border-4 border-white rounded-full flex items-center justify-center transition-transform active:scale-95 hover:bg-white/40 backdrop-blur">
+                <div class="w-14 h-14 bg-white rounded-full shadow-lg"></div>
+            </button>
+        </div>
+        <div id="camera-flash"
+            class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-200 z-30"></div>
+    </div>
+
+    <!-- MODAL DE DETALLES DE ESPECIE (ACTUALIZADO CON CARRUSEL) -->
+    <div id="species-detail-modal"
+        class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 transition-opacity">
+        <div
+            class="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="relative h-64 bg-slate-100 shrink-0 group">
+                <!-- Contenedor Carrusel Deslizable -->
+                <div id="detail-carousel"
+                    class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar w-full h-full relative z-0">
+                    <!-- Las imágenes (slides) se inyectarán aquí con JS -->
+                </div>
+
+                <div
+                    class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10">
+                </div>
+
+                <button id="btn-close-detail"
+                    class="absolute top-4 right-4 z-20 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition-colors"><i
+                        data-lucide="x" class="w-5 h-5"></i></button>
+                <div id="detail-status"
+                    class="absolute bottom-4 right-4 z-20 px-3 py-1 rounded-full font-bold text-sm shadow-lg border border-white/20">
+                    ESTADO</div>
+                <div id="detail-category"
+                    class="absolute bottom-4 left-4 z-20 px-3 py-1 rounded-full font-medium text-xs shadow-lg bg-black/50 text-white backdrop-blur border border-white/20 flex items-center gap-1">
+                    <i data-lucide="tag" class="w-3 h-3"></i> <span>Categoría</span>
+                </div>
+
+                <!-- Indicadores de punto (Dots) -->
+                <div id="carousel-dots"
+                    class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20">
+                    <!-- Dots inyectados por JS -->
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto">
+                <h2 id="detail-name" class="text-3xl font-outfit font-bold text-slate-800 leading-tight mb-1">Nombre
+                </h2>
+                <p id="detail-sci-name" class="text-slate-500 italic mb-4 pb-4 border-b border-slate-100 font-medium">
+                    Científico</p>
+
+                <div class="space-y-4">
+                    <div class="bg-emerald-50 rounded-xl p-3 border border-emerald-100/50 mb-4 grid grid-cols-2 gap-2">
+                        <div>
+                            <h4 class="text-[10px] font-bold text-emerald-600 uppercase mb-1 flex items-center gap-1"><i
+                                    data-lucide="map-pin" class="w-3 h-3"></i> Ubicación</h4>
+                            <p id="detail-location" class="text-emerald-800 text-xs font-medium truncate">Madrid, España
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-[10px] font-bold text-emerald-600 uppercase mb-1 flex items-center gap-1"><i
+                                    data-lucide="clock" class="w-3 h-3"></i> Fecha</h4>
+                            <p id="detail-date" class="text-emerald-800 text-xs font-medium">8 may 2026</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="info" class="w-3 h-3 text-slate-400"></i> Descripción</h4>
+                        <p id="detail-desc" class="text-slate-700 text-sm leading-relaxed"></p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        <div>
+                            <h4
+                                class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i data-lucide="map" class="w-3 h-3"></i> Hábitat Biológico</h4>
+                            <p id="detail-habitat"
+                                class="text-slate-700 text-sm leading-relaxed bg-amber-50 p-3 rounded-xl border border-amber-100/50 h-full">
+                            </p>
+                        </div>
+                        <div>
+                            <h4
+                                class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i data-lucide="utensils" class="w-3 h-3"></i> Dieta</h4>
+                            <p id="detail-diet"
+                                class="text-slate-700 text-sm leading-relaxed bg-blue-50 p-3 rounded-xl border border-blue-100/50 h-full">
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Carga con Barra de Progreso -->
+    <div id="loading-modal"
+        class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center max-w-sm w-full">
+            <div
+                class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4 text-emerald-500 relative overflow-hidden">
+                <i data-lucide="scan-line" class="w-8 h-8 absolute animate-bounce"></i>
+            </div>
+            <h3 id="loading-title" class="text-xl font-outfit font-bold text-slate-800 mb-2">Escaneando...</h3>
+            <p id="loading-desc" class="text-slate-500 text-sm mb-6">Analizando imagen y obteniendo ubicación</p>
+
+            <div class="w-full bg-slate-100 rounded-full h-3 mb-2 overflow-hidden shadow-inner border border-slate-200">
+                <div id="loading-progress"
+                    class="bg-gradient-to-r from-emerald-400 to-teal-500 h-full rounded-full w-0 relative overflow-hidden">
+                    <div
+                        class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2s_infinite]">
+                    </div>
+                </div>
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="loading-status">Conectando
+                IA...</p>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONSEJOS (TIPS) DE CÁMARA (Anti-Unknown) -->
+    <div id="tips-modal"
+        class="hidden fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+        <div
+            class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-md w-full text-center transform transition-all duration-300">
+            <div
+                class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 bg-slate-100 text-slate-500 shadow-inner">
+                <i data-lucide="camera-off" class="w-8 h-8"></i>
+            </div>
+            <h2 class="text-2xl font-outfit font-bold mb-2 text-slate-800">Especie no detectada</h2>
+            <p class="text-slate-600 text-sm mb-6">La IA no ha podido identificar claramente al sujeto. Aquí tienes unos
+                consejos para mejorar tu próximo escaneo:</p>
+
+            <div class="text-left space-y-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <div class="bg-blue-100 text-blue-600 p-2 rounded-lg mt-1 shrink-0"><i data-lucide="focus"
+                            class="w-4 h-4"></i></div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-700">Enfoque y Luz</h4>
+                        <p class="text-xs text-slate-500">Asegúrate de que el sujeto esté bien iluminado y centrado en
+                            el recuadro verde.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="bg-emerald-100 text-emerald-600 p-2 rounded-lg mt-1 shrink-0"><i
+                            data-lucide="footprints" class="w-4 h-4"></i></div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-700">Acercamiento Seguro</h4>
+                        <p class="text-xs text-slate-500">Si es un animal asustadizo, acércate despacio y sin hacer
+                            ruidos bruscos.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <div class="bg-amber-100 text-amber-600 p-2 rounded-lg mt-1 shrink-0"><i data-lucide="zoom-in"
+                            class="w-4 h-4"></i></div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-700">Usa el Zoom</h4>
+                        <p class="text-xs text-slate-500">Si no puedes acercarte (aves o insectos), usa los controles
+                            laterales de zoom de la cámara.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="btn-close-tips"
+                    class="bg-slate-100 text-slate-700 font-semibold py-3 px-4 rounded-xl flex-1 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-retry-camera"
+                    class="bg-emerald-600 text-white font-semibold py-3 px-4 rounded-xl flex-1 hover:bg-emerald-500 transition-colors shadow-lg">Reintentar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerta Conservación / Descubrimiento / Duplicado -->
+    <div id="alert-modal"
+        class="hidden fixed inset-0 z-[210] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+        <div id="alert-card"
+            class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-md w-full text-center transform transition-all duration-300 max-h-[90vh] overflow-y-auto">
+            <div id="alert-icon-container" class="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-3">
+                <i id="alert-icon" data-lucide="star" class="w-8 h-8"></i></div>
+            <h2 id="alert-title" class="text-2xl font-outfit font-bold mb-1 uppercase tracking-wide">ALERTA</h2>
+            <p id="alert-species" class="text-lg font-medium text-slate-700 mb-2">Especie</p>
+            <div id="alert-status-badge"
+                class="inline-block px-3 py-1 rounded-full font-bold text-xs mb-2 shadow-sm border border-black/10">
+                ESTADO</div>
+            <p id="alert-xp-gain"
+                class="text-emerald-600 font-bold text-base mb-4 bg-emerald-50 inline-block px-4 py-1 rounded-full">+0
+                XP</p>
+
+            <div class="text-left bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+                <p id="alert-message" class="text-slate-700 text-sm mb-3 font-medium border-b border-slate-200 pb-3">
+                    Mensaje.</p>
+                <div class="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-slate-200">
+                    <div>
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-1"><i data-lucide="map"
+                                class="w-3 h-3 inline"></i> Hábitat:</h4>
+                        <p id="alert-habitat" class="text-slate-600 text-xs line-clamp-2">...</p>
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] font-bold text-slate-400 uppercase mb-1"><i data-lucide="tag"
+                                class="w-3 h-3 inline"></i> Categoría:</h4>
+                        <p id="alert-category" class="text-slate-600 text-xs font-medium">...</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <h4 class="text-[10px] font-bold text-emerald-500 uppercase mb-1"><i data-lucide="map-pin"
+                                class="w-3 h-3 inline"></i> Encuentro:</h4>
+                        <p id="alert-location" class="text-slate-600 text-xs font-medium truncate">...</p>
+                    </div>
+                    <div>
+                        <h4 class="text-[10px] font-bold text-emerald-500 uppercase mb-1"><i data-lucide="clock"
+                                class="w-3 h-3 inline"></i> Fecha:</h4>
+                        <p id="alert-date" class="text-slate-600 text-xs font-medium">...</p>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-close-alert"
+                class="bg-slate-800 text-white font-semibold py-3 px-8 rounded-xl w-full hover:bg-slate-700 transition-colors shadow-lg">Añadir
+                a Colección</button>
+        </div>
+    </div>
+
+    <!-- Alerta Logro -->
+    <div id="achievement-modal"
+        class="hidden fixed inset-0 z-[220] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+        <div
+            class="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center text-white achievement-pop border border-white/20">
+            <div
+                class="w-24 h-24 mx-auto bg-white/20 rounded-full flex items-center justify-center mb-6 backdrop-blur-md border-4 border-yellow-300/30">
+                <i id="ach-modal-icon" data-lucide="award" class="w-12 h-12 text-yellow-300 drop-shadow-lg"></i>
+            </div>
+            <p class="text-indigo-200 font-semibold uppercase tracking-widest text-xs mb-2">¡Desbloqueo Exclusivo!</p>
+            <h2 id="ach-modal-title" class="text-3xl font-outfit font-bold mb-4 text-white drop-shadow">Título</h2>
+            <p id="ach-modal-desc" class="text-indigo-100 mb-8 text-sm leading-relaxed">Descripción del logro
+                conseguido.</p>
+            <button id="btn-close-ach"
+                class="bg-white text-indigo-700 font-bold py-3 px-8 rounded-xl w-full hover:bg-indigo-50 transition-colors shadow-lg">Coleccionar
+                Trofeo</button>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
