@@ -133,6 +133,48 @@ Formato:
         }
 
         // =========================================================
+        // FASE 1.5 - IUCN RED LIST API PARA ESTADO DE CONSERVACIÓN
+        // =========================================================
+        if (geminiData && geminiData.especie && geminiData.especie !== "No identificada" && geminiData.especie.trim() !== "") {
+          const parts = geminiData.especie.trim().split(' ');
+          const genus = parts[0];
+          const species = parts.slice(1).join(' ');
+
+          if (genus && species) {
+            try {
+              const iucnRes = await fetch(`https://api.iucnredlist.org/api/v4/taxa/scientific_name?genus_name=${genus}&species_name=${species}`, {
+                method: 'GET',
+                headers: {
+                  'accept': 'application/json',
+                  'Authorization': 'redacted'
+                }
+              });
+
+              if (iucnRes.ok) {
+                const iucnData = await iucnRes.json();
+                if (iucnData && iucnData.assessments && iucnData.assessments.length > 0) {
+                  let bestAss = iucnData.assessments[0];
+                  // Intentamos buscar el más reciente global si es posible
+                  const latest = iucnData.assessments.find(a => a.latest === true);
+                  if (latest) {
+                    bestAss = latest;
+                  } else {
+                    const globalAss = iucnData.assessments.filter(a => a.scopes?.some(s => s.code === "1"));
+                    if (globalAss.length > 0) bestAss = globalAss[0];
+                  }
+
+                  if (bestAss && bestAss.red_list_category_code) {
+                    geminiData.estado = bestAss.red_list_category_code;
+                  }
+                }
+              }
+            } catch (e) {
+              console.error("Error consultando IUCN API", e);
+            }
+          }
+        }
+
+        // =========================================================
         // SI NO IDENTIFICA NADA
         // =========================================================
         if (

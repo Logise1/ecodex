@@ -666,6 +666,24 @@
         </div>
     </div>
 
+    <!-- MODAL DE ESTADOS DE CONSERVACIÓN -->
+    <div id="conservation-info-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-opacity">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] achievement-pop">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-xl font-outfit font-bold text-slate-800">Estados de Conservación</h3>
+                <button id="btn-close-conservation" class="text-slate-400 hover:bg-slate-200 p-2 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-3" id="conservation-list-container">
+                <!-- Se inyecta con JS -->
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
+                <p class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">Basado en la Lista Roja de la UICN</p>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="script.js"></script>
 </body>
 

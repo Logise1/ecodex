@@ -36,6 +36,20 @@ let currentFacingMode = 'environment';
 let videoTrack = null;
 let currentZoom = 1; let minZoom = 1; let maxZoom = 1;
 
+// --- Conservación ---
+const CONSERVATION_INFO = {
+    'LC': { short: 'LC', full: 'Preocupación Menor', desc: 'No cumple los criterios para categorías de riesgo. Taxones abundantes y de amplia distribución.' },
+    'NT': { short: 'NT', full: 'Casi Amenazada', desc: 'No satisface los criterios de riesgo en la actualidad, pero es probable que los satisfaga en un futuro cercano.' },
+    'VU': { short: 'VU', full: 'Vulnerable', desc: 'Afronta un alto riesgo de extinción en estado silvestre.' },
+    'EN': { short: 'EN', full: 'En Peligro', desc: 'Afronta un riesgo muy alto de extinción en estado silvestre.' },
+    'CR': { short: 'CR', full: 'En Peligro Crítico', desc: 'Afronta un riesgo extremadamente alto de extinción en estado silvestre.' },
+    'EW': { short: 'EW', full: 'Extinta en Estado Silvestre', desc: 'Solo sobrevive en cultivo, cautividad o como población naturalizada fuera de su distribución original.' },
+    'EX': { short: 'EX', full: 'Extinta', desc: 'No existe duda razonable de que el último individuo ha muerto.' },
+    'UNKNOWN': { short: 'UNKNOWN', full: 'Desconocido', desc: 'No se tienen datos suficientes para evaluar su riesgo de extinción.' }
+};
+let currentDetailStatus = 'UNKNOWN';
+let isStatusExpanded = false;
+
 lucide.createIcons();
 
 // --- Tabs Navegación ---
@@ -329,8 +343,15 @@ async function openSpeciesDetail(data) {
     setTxt('detail-name', data.name || 'Desconocido');
     setTxt('detail-sci-name', data.scientificName || 'No identificado');
 
+    currentDetailStatus = data.status || 'UNKNOWN';
+    isStatusExpanded = false;
+
     const cat = document.getElementById('detail-category'); if (cat) cat.innerHTML = `<i data-lucide="tag" class="w-3 h-3"></i> <span>${data.categoria || 'Otro'}</span>`;
-    const badge = document.getElementById('detail-status'); if (badge) { badge.textContent = data.status; badge.className = `absolute bottom-4 right-4 z-20 px-3 py-1 rounded-full font-bold text-sm shadow-lg border border-white/20 status-${data.status}`; }
+    const badge = document.getElementById('detail-status'); 
+    if (badge) { 
+        badge.textContent = currentDetailStatus; 
+        badge.className = `absolute bottom-4 right-4 z-20 px-3 py-1 rounded-full font-bold text-sm shadow-lg border border-white/20 status-${currentDetailStatus} cursor-pointer hover:scale-105 transition-all duration-300`; 
+    }
 
     setTxt('detail-desc', data.description || "Información pendiente.");
     setTxt('detail-habitat', data.habitat || "Hábitat no registrado.");
@@ -351,6 +372,53 @@ async function openSpeciesDetail(data) {
 
 document.getElementById('btn-close-detail')?.addEventListener('click', () => {
     const m = document.getElementById('species-detail-modal'); if (m) m.classList.add('hidden');
+});
+
+// Lógica de click en el badge de estado
+document.getElementById('detail-status')?.addEventListener('click', (e) => {
+    const badge = e.target;
+    if (!isStatusExpanded) {
+        // Primer click: expandir
+        isStatusExpanded = true;
+        const info = CONSERVATION_INFO[currentDetailStatus] || CONSERVATION_INFO['UNKNOWN'];
+        badge.textContent = `${info.short} - ${info.full}`;
+        badge.classList.remove('scale-105');
+        badge.classList.add('scale-110');
+        setTimeout(() => badge.classList.remove('scale-110'), 200);
+    } else {
+        // Segundo click: abrir modal
+        openConservationModal(currentDetailStatus);
+    }
+});
+
+function openConservationModal(activeStatus) {
+    const listContainer = document.getElementById('conservation-list-container');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '';
+    
+    Object.keys(CONSERVATION_INFO).forEach(key => {
+        const info = CONSERVATION_INFO[key];
+        const isActive = key === activeStatus;
+        
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-2xl border ${isActive ? 'border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-100 bg-white'} transition-all`;
+        
+        card.innerHTML = `
+            <div class="flex items-center gap-3 mb-1">
+                <div class="status-${key} px-2 py-0.5 rounded text-[10px] font-bold shadow-sm border border-black/5 shrink-0">${key}</div>
+                <h4 class="font-bold text-sm text-slate-800">${info.full} ${isActive ? '<span class="text-[10px] text-emerald-600 font-normal ml-1 bg-emerald-100 px-1.5 py-0.5 rounded-full">(Tu especie)</span>' : ''}</h4>
+            </div>
+            <p class="text-xs text-slate-500 ml-12 leading-relaxed">${info.desc}</p>
+        `;
+        listContainer.appendChild(card);
+    });
+    
+    document.getElementById('conservation-info-modal')?.classList.remove('hidden');
+}
+
+document.getElementById('btn-close-conservation')?.addEventListener('click', () => {
+    document.getElementById('conservation-info-modal')?.classList.add('hidden');
 });
 
 // --- DASHBOARD (HOME) LOGIC ---
