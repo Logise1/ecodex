@@ -57,7 +57,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('nav-active'); b.classList.add('nav-inactive'); });
         btn.classList.add('nav-active'); btn.classList.remove('nav-inactive');
-        ['view-ecodex', 'view-leaderboard', 'view-profile', 'view-home'].forEach(id => {
+        ['view-ecodex', 'view-leaderboard', 'view-profile', 'view-home', 'view-gallery'].forEach(id => {
             const view = document.getElementById(id);
             if (view) view.classList.add('hidden');
         });
@@ -189,6 +189,7 @@ function filterAndRenderEcodex() {
     });
     updateDashboardStats();
     renderEcodex(filtered, globalScans.length);
+    renderGallery(filtered);
 }
 
 function renderEcodex(scans, totalCount) {
@@ -934,4 +935,133 @@ window.addEventListener('appinstalled', () => {
     installBanner?.classList.add('hidden');
     installBanner?.classList.remove('flex');
     deferredPrompt = null;
+});
+
+// --- GALLERY ---
+function renderGallery(scans) {
+    const grid = document.getElementById('gallery-grid');
+    const empty = document.getElementById('gallery-empty-state');
+    if (!grid || !empty) return;
+    grid.innerHTML = '';
+    const validScans = scans.filter(s => s.imageId);
+    if (validScans.length === 0) {
+        empty.classList.remove('hidden'); empty.classList.add('flex');
+    } else {
+        empty.classList.add('hidden'); empty.classList.remove('flex');
+        validScans.forEach((data) => {
+            const imgUrl = `https://greenbase.arielcapdevila.com/file/${data.imageId}`;
+            const card = document.createElement('div');
+            card.className = 'glass-card rounded-2xl overflow-hidden shadow-sm relative group cursor-pointer border border-slate-100 aspect-square';
+            card.innerHTML = `
+                <img src="${imgUrl}" alt="${data.name}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                    <p class="text-white font-bold text-xs truncate drop-shadow-md mb-1">${data.name || 'Desconocido'}</p>
+                    <button class="btn-download absolute top-2 right-2 bg-white/20 hover:bg-emerald-500 text-white backdrop-blur rounded-full p-2 transition-colors shadow-lg flex items-center justify-center" data-url="${imgUrl}" data-name="${data.name || 'foto'}.jpg" title="Descargar">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+            // Click on image opens detail modal, except if downloading
+            card.addEventListener('click', (e) => {
+                if(e.target.closest('.btn-download')) {
+                    downloadImage(imgUrl, `${data.name || 'foto'}.jpg`);
+                } else {
+                    openSpeciesDetail(data);
+                }
+            });
+            grid.appendChild(card);
+        });
+        lucide.createIcons();
+    }
+}
+
+async function downloadImage(url, filename) {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+        window.open(url, '_blank');
+    }
+}
+
+// --- CROPPER LOGIC ---
+let currentCropper = null;
+const cropModal = document.getElementById('crop-modal');
+const cropImageEl = document.getElementById('crop-image-element');
+const fileInput = document.getElementById('upload-photo-input');
+
+function setupUploadButtons() {
+    ['btn-header-upload', 'btn-camera-upload'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => {
+            if (currentUser) {
+                fileInput.click();
+            } else {
+                showMessage("Inicia sesión para subir fotos");
+            }
+        });
+    });
+}
+setupUploadButtons();
+
+fileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    if(cropImageEl) cropImageEl.src = url;
+    
+    // Stop camera if it's open
+    stopCamera();
+    
+    if(cropModal) cropModal.classList.remove('hidden');
+    
+    if (currentCropper) {
+        currentCropper.destroy();
+    }
+    
+    if(cropImageEl) {
+        cropImageEl.onload = () => {
+            currentCropper = new Cropper(cropImageEl, {
+                viewMode: 1,
+                autoCropArea: 0.9,
+                responsive: true,
+                background: false,
+            });
+        };
+    }
+    fileInput.value = ''; // reset
+});
+
+document.getElementById('btn-cancel-crop')?.addEventListener('click', () => {
+    if(cropModal) cropModal.classList.add('hidden');
+    if (currentCropper) currentCropper.destroy();
+});
+
+document.getElementById('btn-rotate-crop')?.addEventListener('click', () => {
+    if (currentCropper) currentCropper.rotate(90);
+});
+
+document.getElementById('btn-confirm-crop')?.addEventListener('click', () => {
+    if (!currentCropper) return;
+    const canvas = currentCropper.getCroppedCanvas({
+        maxWidth: 2048,
+        maxHeight: 2048
+    });
+    if (!canvas) return;
+    
+    if(cropModal) cropModal.classList.add('hidden');
+    currentCropper.destroy();
+    
+    canvas.toBlob((blob) => {
+        const croppedFile = new File([blob], "upload.jpg", { type: 'image/jpeg' });
+        processScanFlow(croppedFile);
+    }, 'image/jpeg', 0.9);
 });

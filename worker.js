@@ -229,7 +229,8 @@ Devuelve SOLO JSON válido:
   "descripcion":"Breve info",
   "habitat":"Dónde vive",
   "dieta":"Qué come",
-  "categoria":"Mamíferos|Aves|Reptiles|Anfibios|Peces|Insectos|Plantas|Hongos|Otro"
+  "categoria":"Mamíferos|Aves|Reptiles|Anfibios|Peces|Insectos|Plantas|Hongos|Otro",
+  "interactividad":"Descripción de comportamiento interactivo o curioso si existe (ej: si se toca se cierra, si se pisa brilla, etc). Si no tiene nada especial, devolver null."
 }`,
                 },
               ],
