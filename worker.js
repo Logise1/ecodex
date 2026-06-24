@@ -310,11 +310,96 @@ Devuelve SOLO JSON válido:
       }
     }
 
+    if (request.method === "POST" && url.pathname === "/api/nearby") {
+      try {
+        const body = await request.json();
+        const lat = body.lat;
+        const lon = body.lon;
+        const location = body.location || "Ubicación desconocida";
+
+        const prompt = `Dame una lista de exactamente 35 especies de seres vivos (animales, plantas u hongos) que se puedan encontrar cerca de la ubicación con coordenadas latitud ${lat}, longitud ${lon} (${location}).
+La lista debe incluir especies de diferentes categorías y con diferentes estados de conservación de la lista roja de la UICN (LC, NT, VU, EN, CR, EW, EX).
+Devuelve SOLO un array JSON válido, sin formato markdown y sin explicaciones.
+Formato de respuesta:
+[
+  {
+    "nombre": "Nombre común en español",
+    "especie": "Nombre científico (Género especie)",
+    "estado": "LC|NT|VU|EN|CR|EW|EX",
+    "categoria": "Mamíferos|Aves|Reptiles|Anfibios|Peces|Insectos|Plantas|Hongos"
+  }
+]`;
+
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${env.GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: prompt,
+                    },
+                  ],
+                },
+              ],
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.5,
+              },
+            }),
+          }
+        );
+
+        if (!geminiRes.ok) {
+          const errorText = await geminiRes.text();
+          throw new Error(`Fallo en Gemini: ${geminiRes.status} ${errorText}`);
+        }
+
+        const geminiRawData = await geminiRes.json();
+        const extractedText = geminiRawData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!extractedText) {
+          throw new Error("Gemini no devolvió texto.");
+        }
+
+        const speciesList = JSON.parse(
+          extractedText
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim()
+        );
+
+        return new Response(JSON.stringify(speciesList), {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
+      } catch (error) {
+        return new Response(
+          JSON.stringify({
+            error: error.message || "Error interno al obtener especies cercanas.",
+          }),
+          {
+            status: 500,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+    }
+
     // =========================================================
     // 404
     // =========================================================
     return new Response(
-      "Endpoint no encontrado. Usa /api/scan",
+      "Endpoint no encontrado. Usa /api/scan o /api/nearby",
       {
         status: 404,
         headers: corsHeaders,

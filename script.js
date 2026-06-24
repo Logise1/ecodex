@@ -97,6 +97,46 @@ document.getElementById('btn-login')?.addEventListener('click', async () => { tr
 document.getElementById('btn-logout')?.addEventListener('click', () => signOut(auth));
 document.getElementById('btn-logout-settings')?.addEventListener('click', () => signOut(auth));
 
+document.getElementById('btn-export-data')?.addEventListener('click', () => {
+    if (globalScans.length === 0) {
+        showMessage("No tienes descubrimientos para exportar.");
+        return;
+    }
+    const exportData = globalScans.map(item => ({
+        nombre: item.name || '',
+        nombreCientifico: item.scientificName || '',
+        categoria: item.categoria || 'Otro',
+        estado: item.status || 'UNKNOWN',
+        xpEarned: item.xpEarned || 0,
+        timestamp: item.timestamp ? (typeof item.timestamp.toDate === 'function' ? item.timestamp.toDate().toISOString() : new Date(getDocTime(item)).toISOString()) : '',
+        fotoUrl: item.imageId ? `https://greenbase.arielcapdevila.com/file/${item.imageId}` : ''
+    }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ecodex-descubrimientos-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showMessage("Descubrimientos exportados con éxito.");
+});
+
+document.getElementById('btn-home-gallery')?.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('nav-active'); b.classList.add('nav-inactive'); });
+    ['view-ecodex', 'view-leaderboard', 'view-profile', 'view-home', 'view-gallery'].forEach(id => {
+        const view = document.getElementById(id);
+        if (view) view.classList.add('hidden');
+    });
+    document.getElementById('view-gallery')?.classList.remove('hidden');
+});
+
+document.getElementById('btn-home-nearby')?.addEventListener('click', openNearbyModal);
+document.getElementById('btn-close-nearby')?.addEventListener('click', () => {
+    document.getElementById('nearby-modal')?.classList.add('hidden');
+});
+
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
@@ -160,11 +200,29 @@ function updateProfileUI() {
     }
 }
 
-// --- Carga de EcoDex ---
 function loadPrivateData(uid) {
+    const cachedScans = localStorage.getItem(`scans_${uid}`);
+    if (cachedScans) {
+        try {
+            globalScans = JSON.parse(cachedScans);
+            filterAndRenderEcodex();
+        } catch (e) {
+            console.error("Error reading cached scans", e);
+        }
+    }
+
     const scansRef = collection(db, 'artifacts', appId, 'users', uid, 'scans');
     unsubscribeScans = onSnapshot(scansRef, (snapshot) => {
-        globalScans = []; snapshot.forEach(doc => { globalScans.push({ ...doc.data(), docId: doc.id }); });
+        globalScans = []; 
+        snapshot.forEach(doc => { 
+            const data = doc.data();
+            const item = { ...data, docId: doc.id };
+            if (data.timestamp && typeof data.timestamp.toMillis === 'function') {
+                item.timestamp = { seconds: Math.floor(data.timestamp.toMillis() / 1000) };
+            }
+            globalScans.push(item); 
+        });
+        localStorage.setItem(`scans_${uid}`, JSON.stringify(globalScans));
         filterAndRenderEcodex();
     }, (err) => console.error(err));
 }
@@ -336,9 +394,10 @@ async function openSpeciesDetail(data) {
     if (carousel) carousel.innerHTML = '';
     if (dotsContainer) dotsContainer.innerHTML = '';
 
-    // 1. Añadir la foto del usuario primero
-    const mainImgUrl = data.imageId ? `https://greenbase.arielcapdevila.com/file/${data.imageId}` : '';
-    addSlideToCarousel(mainImgUrl, 'Tu captura', true, 0);
+    // 1. Añadir la foto del usuario primero o fallback
+    const mainImgUrl = data.imageId ? `https://greenbase.arielcapdevila.com/file/${data.imageId}` : 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=800&q=80';
+    const label = data.imageId ? 'Tu captura' : 'Vista previa';
+    addSlideToCarousel(mainImgUrl, label, true, 0);
 
     // Setear Info de Texto
     setTxt('detail-name', data.name || 'Desconocido');
@@ -1065,3 +1124,268 @@ document.getElementById('btn-confirm-crop')?.addEventListener('click', () => {
         processScanFlow(croppedFile);
     }, 'image/jpeg', 0.9);
 });
+
+async function openNearbyModal() {
+    const modal = document.getElementById('nearby-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    
+    const container = document.getElementById('nearby-list-container');
+    const subtitle = document.getElementById('nearby-modal-subtitle');
+    if (!container || !subtitle) return;
+    
+    // Check local storage first
+    let cachedList = localStorage.getItem('nearby_species');
+    let cachedLat = localStorage.getItem('nearby_lat');
+    let cachedLon = localStorage.getItem('nearby_lon');
+    
+    let needsFetch = true;
+    let currentCoords = null;
+    
+    subtitle.textContent = "Obteniendo ubicación...";
+    container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div class="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-blue-500 mb-4"></div>
+            <p class="text-sm font-medium">Buscando especies en tu área...</p>
+        </div>
+    `;
+
+    try {
+        currentCoords = await new Promise((resolve, reject) => {
+            if (!navigator.geolocation) return reject(new Error("Geolocalización no soportada"));
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+                (err) => reject(new Error("Se necesita permiso de ubicación para buscar especies cercanas.")),
+                { timeout: 8000, enableHighAccuracy: true }
+            );
+        });
+    } catch (err) {
+        showMessage(err.message);
+        modal.classList.add('hidden');
+        return;
+    }
+
+    if (cachedList && cachedLat && cachedLon) {
+        const dist = getDistance(currentCoords.lat, currentCoords.lon, parseFloat(cachedLat), parseFloat(cachedLon));
+        if (dist < 1.0) {
+            needsFetch = false;
+        }
+    }
+
+    let speciesList = [];
+    if (needsFetch) {
+        subtitle.textContent = "Consultando IA...";
+        try {
+            // Get location name
+            let locationName = "Ubicación desconocida";
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lon}&zoom=10`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.address) {
+                        const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
+                        const state = data.address.state || data.address.country || "";
+                        locationName = [city, state].filter(Boolean).join(", ");
+                    }
+                }
+            } catch (e) {
+                console.error("Error Nominatim", e);
+            }
+
+            const response = await fetch(WORKER_API_URL.replace('/api/scan', '/api/nearby'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lat: currentCoords.lat,
+                    lon: currentCoords.lon,
+                    location: locationName
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("No se pudo obtener el listado de especies cercanas.");
+            }
+
+            speciesList = await response.json();
+            if (speciesList.error) {
+                throw new Error(speciesList.error);
+            }
+
+            // Save in localStorage
+            localStorage.setItem('nearby_species', JSON.stringify(speciesList));
+            localStorage.setItem('nearby_lat', currentCoords.lat);
+            localStorage.setItem('nearby_lon', currentCoords.lon);
+            subtitle.textContent = `Generado para: ${locationName}`;
+        } catch (err) {
+            showMessage(err.message);
+            modal.classList.add('hidden');
+            return;
+        }
+    } else {
+        speciesList = JSON.parse(cachedList);
+        subtitle.textContent = "Cargado de caché local (<1km)";
+    }
+
+    renderNearbyList(speciesList);
+}
+
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // distance in km
+}
+
+function renderNearbyList(speciesList) {
+    const container = document.getElementById('nearby-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    speciesList.forEach(sp => {
+        const discovered = hasSpecies(sp.especie, sp.nombre);
+        const card = document.createElement('div');
+        card.className = `flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border ${discovered ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-100'} transition-all cursor-pointer`;
+        
+        const uniqueId = `nearby-img-${sp.especie.replace(/\s+/g, '-')}`;
+        
+        card.innerHTML = `
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+                <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-slate-200 relative shadow-inner flex items-center justify-center">
+                    <img id="${uniqueId}" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=80&q=80" alt="Foto">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-bold text-slate-800 leading-tight truncate">${sp.nombre}</h4>
+                    <p class="text-xs text-slate-500 italic font-medium leading-none mt-0.5 truncate">${sp.especie}</p>
+                    <div class="flex gap-1.5 mt-1.5">
+                        <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${sp.categoria}</span>
+                        <span class="status-${sp.estado} text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded shadow-sm border border-black/5">${sp.estado}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="shrink-0 ml-2">
+                ${discovered ? `
+                    <span class="text-xs font-bold text-emerald-600 bg-emerald-100/50 py-1.5 px-3 rounded-xl border border-emerald-200 flex items-center gap-1">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i> Descubierta
+                    </span>
+                ` : `
+                    <span class="text-xs font-semibold text-slate-400 bg-slate-100 py-1.5 px-3 rounded-xl border border-slate-200/50 flex items-center gap-1">
+                        <i data-lucide="lock" class="w-3 h-3"></i> Pendiente
+                    </span>
+                `}
+            </div>
+        `;
+        
+        card.addEventListener('click', () => {
+            const foundScan = globalScans.find(scan => {
+                const scanSci = (scan.scientificName || '').toLowerCase().trim();
+                const scanName = (scan.name || '').toLowerCase().trim();
+                return (sp.especie && scanSci === sp.especie.toLowerCase().trim()) ||
+                       (sp.nombre && scanName === sp.nombre.toLowerCase().trim());
+            });
+            if (foundScan) {
+                openSpeciesDetail(foundScan);
+            } else {
+                openNearbyDetail(sp);
+            }
+        });
+        
+        container.appendChild(card);
+        
+        getSpeciesImage(sp.especie).then(src => {
+            const imgEl = document.getElementById(uniqueId);
+            if (imgEl && src) {
+                imgEl.src = src;
+            }
+        });
+    });
+    
+    lucide.createIcons();
+}
+
+function hasSpecies(scientificName, commonName) {
+    return globalScans.some(scan => {
+        const scanSci = (scan.scientificName || '').toLowerCase().trim();
+        const scanName = (scan.name || '').toLowerCase().trim();
+        return (scientificName && scanSci === scientificName.toLowerCase().trim()) ||
+               (commonName && scanName === commonName.toLowerCase().trim());
+    });
+}
+
+async function getSpeciesImage(scientificName) {
+    let img = await fetchWikiImage('es', scientificName);
+    if (!img) {
+        img = await fetchWikiImage('en', scientificName);
+    }
+    return img;
+}
+
+async function fetchWikiImage(lang, title) {
+    try {
+        const url = `https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=150&origin=*`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            const pages = data.query?.pages;
+            if (pages) {
+                const pageId = Object.keys(pages)[0];
+                if (pageId && pages[pageId].thumbnail) {
+                    return pages[pageId].thumbnail.source;
+                }
+            }
+        }
+    } catch(e){}
+    return null;
+}
+
+async function openNearbyDetail(sp) {
+    const mockData = {
+        name: sp.nombre,
+        scientificName: sp.especie,
+        categoria: sp.categoria,
+        status: sp.estado,
+        xpEarned: 0,
+        description: "Cargando información desde Wikipedia...",
+        habitat: "Desconocido",
+        dieta: "Desconocida",
+        locationName: "Área cercana",
+        encounterDate: "No descubierta"
+    };
+    
+    await openSpeciesDetail(mockData);
+    
+    try {
+        const res = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(sp.especie)}`);
+        if (res.ok) {
+            const wiki = await res.json();
+            const descEl = document.getElementById('detail-desc');
+            if (descEl && wiki.extract) {
+                descEl.textContent = wiki.extract;
+            }
+            if (wiki.thumbnail && wiki.thumbnail.source) {
+                const carousel = document.getElementById('detail-carousel');
+                if (carousel) {
+                    const firstImg = carousel.querySelector('img');
+                    if (firstImg && firstImg.src.includes('unsplash.com')) {
+                        firstImg.src = wiki.thumbnail.source;
+                    }
+                }
+            }
+        } else {
+            const resEn = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(sp.especie)}`);
+            if (resEn.ok) {
+                const wikiEn = await resEn.json();
+                const descEl = document.getElementById('detail-desc');
+                if (descEl && wikiEn.extract) {
+                    descEl.textContent = wikiEn.extract;
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Error cargando summary de Wikipedia", e);
+    }
+}
