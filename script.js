@@ -19,7 +19,8 @@ const ACHIEVEMENTS_DB = {
     'first_step': { id: 'first_step', title: 'Primer Paso', desc: 'Documentaste tu primera especie.', icon: 'footprints', color: 'bg-emerald-100 text-emerald-600' },
     'rare_hunter': { id: 'rare_hunter', title: 'Buscador de Rarezas', desc: 'Encontraste una especie Casi Amenazada o Vulnerable.', icon: 'sparkles', color: 'bg-yellow-100 text-yellow-600' },
     'critical_hero': { id: 'critical_hero', title: 'Héroe Crítico', desc: 'Descubriste una especie en Peligro Crítico o Extinta.', icon: 'shield-alert', color: 'bg-red-100 text-red-600' },
-    'collector_5': { id: 'collector_5', title: 'Coleccionista Novato', desc: 'Has registrado 5 especies diferentes en tu EcoDex.', icon: 'library', color: 'bg-blue-100 text-blue-600' }
+    'collector_5': { id: 'collector_5', title: 'Coleccionista Novato', desc: 'Has registrado 5 especies diferentes en tu EcoDex.', icon: 'library', color: 'bg-blue-100 text-blue-600' },
+    'botanist': { id: 'botanist', title: 'Botánico de campo', desc: 'Has documentado 5 plantas distintas.', icon: 'flower-2', color: 'bg-lime-100 text-lime-700' }
 };
 
 function getLevelFromXP(xp) { return Math.floor(Math.sqrt(Math.max(0, xp) / 50)) + 1; }
@@ -29,6 +30,9 @@ let currentUser = null; let currentUserProfile = null;
 let unsubscribeScans = null; let unsubscribeLeaderboard = null;
 let pendingAlertsQueue = []; let globalScans = [];
 let currentCategory = 'Todos'; let currentSort = 'date_desc';
+let nearbyFilter = 'plantas';
+let lastNearbyList = [];
+let locationCache = { name: null, ts: 0, inflight: null };
 
 // Variables de Cámara y Zoom
 let cameraStream = null;
@@ -133,8 +137,24 @@ document.getElementById('btn-home-gallery')?.addEventListener('click', () => {
 });
 
 document.getElementById('btn-home-nearby')?.addEventListener('click', openNearbyModal);
+document.getElementById('plant-hunt-card')?.addEventListener('click', openNearbyModal);
 document.getElementById('btn-close-nearby')?.addEventListener('click', () => {
     document.getElementById('nearby-modal')?.classList.add('hidden');
+});
+document.getElementById('btn-nearby-scan')?.addEventListener('click', () => {
+    document.getElementById('nearby-modal')?.classList.add('hidden');
+    if (currentUser) startCamera();
+});
+document.querySelectorAll('.nearby-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+        nearbyFilter = btn.getAttribute('data-filter') || 'plantas';
+        document.querySelectorAll('.nearby-filter').forEach(b => {
+            const on = b === btn;
+            b.classList.toggle('tab-active', on);
+            b.classList.toggle('tab-inactive', !on);
+        });
+        renderNearbyList(lastNearbyList);
+    });
 });
 
 onAuthStateChanged(auth, async (user) => {
@@ -146,6 +166,7 @@ onAuthStateChanged(auth, async (user) => {
         await initializeUserProfile(user);
         loadPrivateData(user.uid); loadPublicLeaderboard();
         loadSpeciesOfTheDay();
+        setTimeout(() => prefetchNearbyQuiet(), 1200);
     } else {
         currentUser = null; currentUserProfile = null; globalScans = [];
         document.getElementById('login-screen')?.classList.remove('hidden');
@@ -248,6 +269,7 @@ function filterAndRenderEcodex() {
     updateDashboardStats();
     renderEcodex(filtered, globalScans.length);
     renderGallery(filtered);
+    refreshPlantHuntProgress();
 }
 
 function renderEcodex(scans, totalCount) {
@@ -413,21 +435,43 @@ async function openSpeciesDetail(data) {
         badge.className = `absolute bottom-4 right-4 z-20 px-3 py-1 rounded-full font-bold text-sm shadow-lg border border-white/20 status-${currentDetailStatus} cursor-pointer hover:scale-105 transition-all duration-300`; 
     }
 
-    setTxt('detail-desc', data.description || "Información pendiente.");
+    setTxt('detail-desc', data.description || data.descripcionLarga || "Información pendiente.");
     setTxt('detail-habitat', data.habitat || "Hábitat no registrado.");
     setTxt('detail-diet', data.dieta || "Dieta desconocida.");
     setTxt('detail-location', data.locationName || "Ubicación oculta");
     setTxt('detail-date', data.encounterDate || "Fecha desconocida");
 
+    const dietLabel = document.querySelector('#detail-diet-label span');
+    if (dietLabel) dietLabel.textContent = (data.categoria === 'Plantas' || data.categoria === 'Hongos') ? 'Nutrición' : 'Dieta';
+
+    fillOptionalBox('detail-fact-box', 'detail-fact', data.datoCurioso);
+    fillOptionalBox('detail-id-box', 'detail-recognize', data.comoReconocer);
+    fillOptionalBox('detail-size-box', 'detail-size', data.tamano);
+    fillOptionalBox('detail-season-box', 'detail-season', data.temporada);
+    fillOptionalBox('detail-threat-box', 'detail-threats', data.amenazas);
+    fillOptionalBox('detail-interact-box', 'detail-interact', data.interactividad);
+
     modal.classList.remove('hidden');
     lucide.createIcons();
+
+    if (data.foto) {
+        addSlideToCarousel(data.foto, 'Referencia', false, 1);
+    }
 
     // 2. Buscar fotos adicionales en Wikimedia Commons
     const extraImages = await fetchCommonsImages(data.scientificName);
     extraImages.forEach((imgUrl, idx) => {
-        addSlideToCarousel(imgUrl, 'Wikimedia', false, idx + 1);
+        addSlideToCarousel(imgUrl, 'Wikimedia', false, idx + (data.foto ? 2 : 1));
     });
     lucide.createIcons();
+}
+
+function fillOptionalBox(boxId, textId, value) {
+    const box = document.getElementById(boxId);
+    const txt = document.getElementById(textId);
+    const ok = value && String(value).trim() && String(value).toLowerCase() !== 'null';
+    if (box) box.classList.toggle('hidden', !ok);
+    if (ok && txt) txt.textContent = value;
 }
 
 document.getElementById('btn-close-detail')?.addEventListener('click', () => {
@@ -571,6 +615,13 @@ function updateDashboardStats() {
     const m3Txt = document.getElementById('m3-text');
     if(m3Prog) m3Prog.style.width = ((m3Count / 100) * 100) + '%';
     if(m3Txt) m3Txt.textContent = `${m3Count}/100`;
+
+    const plantsToday = todayScans.filter(s => (s.categoria || '') === 'Plantas').length;
+    const m4Count = Math.min(plantsToday, 2);
+    const m4Prog = document.getElementById('m4-progress');
+    const m4Txt = document.getElementById('m4-text');
+    if(m4Prog) m4Prog.style.width = ((m4Count / 2) * 100) + '%';
+    if(m4Txt) m4Txt.textContent = `${m4Count}/2`;
 }
 
 document.getElementById('sotd-card')?.addEventListener('click', () => {
@@ -596,6 +647,7 @@ async function startCamera() {
         cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
         if (videoElement) videoElement.srcObject = cameraStream;
         if (cameraModal) cameraModal.classList.remove('hidden');
+        prefetchLocation();
 
         videoTrack = cameraStream.getVideoTracks()[0];
         const capabilities = videoTrack.getCapabilities();
@@ -656,8 +708,17 @@ document.getElementById('btn-close-tips')?.addEventListener('click', () => { con
 document.getElementById('btn-retry-camera')?.addEventListener('click', () => { const m = document.getElementById('tips-modal'); if (m) m.classList.add('hidden'); if (currentUser) startCamera(); });
 
 // --- OBTENER UBICACIÓN ---
+async function prefetchLocation() {
+    getReadableLocation().catch(() => {});
+}
+
 async function getReadableLocation() {
-    return new Promise((resolve) => {
+    if (locationCache.name && (Date.now() - locationCache.ts) < 120000) {
+        return locationCache.name;
+    }
+    if (locationCache.inflight) return locationCache.inflight;
+
+    locationCache.inflight = new Promise((resolve) => {
         if (!navigator.geolocation) return resolve("Ubicación no soportada");
         navigator.geolocation.getCurrentPosition(async (pos) => {
             try {
@@ -674,25 +735,36 @@ async function getReadableLocation() {
                 resolve(locName || `${lat.toFixed(3)}, ${lon.toFixed(3)}`);
             } catch (e) { resolve(`${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`); }
         }, () => { resolve("Ubicación oculta"); }, { timeout: 6000, enableHighAccuracy: false });
+    }).then((name) => {
+        locationCache.name = name;
+        locationCache.ts = Date.now();
+        locationCache.inflight = null;
+        return name;
+    }).catch((err) => {
+        locationCache.inflight = null;
+        throw err;
     });
+
+    return locationCache.inflight;
 }
 
 // --- FLUJO DE ESCANEO ---
 async function processScanFlow(file) {
     showLoading("Analizando ADN digital...");
     try {
-        const compressedFile = await compressImage(file, 1024);
-        
         const statusEl = document.getElementById('loading-status');
-        if (statusEl) statusEl.textContent = "Obteniendo ubicación...";
-        
-        const locationName = await getReadableLocation();
+        if (statusEl) statusEl.textContent = "Ubicación y foto...";
+
+        const [compressedFile, locationName] = await Promise.all([
+            compressImage(file, 768),
+            getReadableLocation()
+        ]);
 
         const formDataWorker = new FormData(); 
         formDataWorker.append('image', compressedFile);
         formDataWorker.append('location', locationName);
 
-        if (statusEl) statusEl.textContent = "Buscando coincidencias...";
+        if (statusEl) statusEl.textContent = "Identificando especie...";
         const workerRes = await fetch(WORKER_API_URL, { method: 'POST', body: formDataWorker });
 
         if (!workerRes.ok) throw new Error("Error de conexión IA");
@@ -726,9 +798,18 @@ async function processScanFlow(file) {
 
         const aiData = {
             nombre: rawAiData.nombre || "Especie", especie: rawAiData.especie || "Desconocida",
-            estado: safeStatus, descripcion: rawAiData.descripcion || "Descripción no generada.",
+            estado: safeStatus, descripcion: rawAiData.descripcion || rawAiData.descripcionLarga || "Descripción no generada.",
             habitat: rawAiData.habitat || "Desconocido", dieta: rawAiData.dieta || "Desconocida", categoria: rawAiData.categoria || "Otro",
-            locationName: locationName, encounterDate: encounterDate
+            locationName: locationName, encounterDate: encounterDate,
+            datoCurioso: rawAiData.datoCurioso || null,
+            tamano: rawAiData.tamano || null,
+            temporada: rawAiData.temporada || null,
+            comoReconocer: rawAiData.comoReconocer || null,
+            amenazas: rawAiData.amenazas || null,
+            interactividad: rawAiData.interactividad || null,
+            descripcionLarga: rawAiData.descripcionLarga || null,
+            observaciones: rawAiData.observaciones || null,
+            foto: rawAiData.foto || null
         };
 
         await saveAndShowResults(aiData, imageId);
@@ -740,14 +821,21 @@ function showLoading(text) {
     const modal = document.getElementById('loading-modal'); if (modal) modal.classList.remove('hidden');
     const bar = document.getElementById('loading-progress');
     if (bar) {
-        bar.classList.remove('progress-bar-anim'); bar.style.transition = 'none'; bar.style.width = '0%';
-        requestAnimationFrame(() => { requestAnimationFrame(() => { bar.classList.add('progress-bar-anim'); bar.style.width = '95%'; }); });
+        bar.classList.remove('progress-bar-anim', 'progress-bar-done');
+        bar.style.width = '';
+        bar.style.transition = '';
+        void bar.offsetWidth;
+        bar.classList.add('progress-bar-anim');
     }
 }
 
 function hideLoading() {
     const bar = document.getElementById('loading-progress');
-    if (bar) { bar.style.transition = 'width 0.3s ease-out'; bar.style.width = '100%'; }
+    if (bar) {
+        bar.classList.remove('progress-bar-anim');
+        bar.classList.add('progress-bar-done');
+        bar.style.width = '100%';
+    }
     setTimeout(() => { const m = document.getElementById('loading-modal'); if (m) m.classList.add('hidden'); }, 400);
 }
 
@@ -765,6 +853,15 @@ async function saveAndShowResults(aiData, imageId) {
         name: aiData.nombre, scientificName: aiData.especie, status: aiData.estado,
         description: aiData.descripcion, habitat: aiData.habitat, dieta: aiData.dieta, categoria: aiData.categoria,
         locationName: aiData.locationName, encounterDate: aiData.encounterDate,
+        datoCurioso: aiData.datoCurioso || null,
+        tamano: aiData.tamano || null,
+        temporada: aiData.temporada || null,
+        comoReconocer: aiData.comoReconocer || null,
+        amenazas: aiData.amenazas || null,
+        interactividad: aiData.interactividad || null,
+        descripcionLarga: aiData.descripcionLarga || null,
+        observaciones: aiData.observaciones || null,
+        foto: aiData.foto || null,
         imageId: imageId, xpEarned: xpGained, timestamp: serverTimestamp()
     });
 
@@ -777,6 +874,8 @@ async function saveAndShowResults(aiData, imageId) {
     if (['NT', 'VU'].includes(aiData.estado) && !currentAchievements.includes('rare_hunter')) newAchievements.push('rare_hunter');
     if (['CR', 'EW', 'EX'].includes(aiData.estado) && !currentAchievements.includes('critical_hero')) newAchievements.push('critical_hero');
     if (globalScans.length + 1 >= 5 && !currentAchievements.includes('collector_5')) newAchievements.push('collector_5');
+    const plantCount = globalScans.filter(s => (s.categoria || '') === 'Plantas').length + (aiData.categoria === 'Plantas' ? 1 : 0);
+    if (plantCount >= 5 && !currentAchievements.includes('botanist')) newAchievements.push('botanist');
 
     const updatedAchievementsList = [...currentAchievements, ...newAchievements];
     const newLevel = getLevelFromXP(newXp);
@@ -826,6 +925,12 @@ function showConservationAlert(data, xp) {
     const xpGain = document.getElementById('alert-xp-gain');
     if (xpGain) xpGain.textContent = `+${xp} XP Conseguidos`;
 
+    const interBox = document.getElementById('alert-interactivity-container');
+    const interTxt = document.getElementById('alert-interactivity');
+    const interOk = data.interactividad && String(data.interactividad).toLowerCase() !== 'null';
+    if (interBox) interBox.classList.toggle('hidden', !interOk);
+    if (interOk && interTxt) interTxt.textContent = data.interactividad;
+
     const iconContainer = document.getElementById('alert-icon-container'); const alertIcon = document.getElementById('alert-icon');
     const alertTitle = document.getElementById('alert-title'); const alertMsg = document.getElementById('alert-message');
 
@@ -865,6 +970,9 @@ function showDuplicateAlert(existingData) {
     const xpGain = document.getElementById('alert-xp-gain');
     if (xpGain) { xpGain.textContent = `Ya registrada`; xpGain.className = "text-slate-500 font-bold text-base mb-4 bg-slate-100 inline-block px-4 py-1 rounded-full"; }
 
+    const interBox = document.getElementById('alert-interactivity-container');
+    if (interBox) interBox.classList.add('hidden');
+
     const iconContainer = document.getElementById('alert-icon-container'); const alertIcon = document.getElementById('alert-icon');
     const alertTitle = document.getElementById('alert-title'); const alertMsg = document.getElementById('alert-message');
 
@@ -902,7 +1010,7 @@ function compressImage(file, maxSize) {
                 const canvas = document.createElement('canvas'); let w = img.width, h = img.height;
                 if (w > h && w > maxSize) { h *= maxSize / w; w = maxSize; } else if (h > maxSize) { w *= maxSize / h; h = maxSize; }
                 canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                canvas.toBlob(b => resolve(new File([b], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.85);
+        canvas.toBlob(b => resolve(new File([b], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.72);
             };
         };
         reader.onerror = error => reject(error);
@@ -1125,161 +1233,229 @@ document.getElementById('btn-confirm-crop')?.addEventListener('click', () => {
     }, 'image/jpeg', 0.9);
 });
 
+const NEARBY_CACHE_MS = 12 * 60 * 60 * 1000;
+const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=80&q=80';
+
 async function openNearbyModal() {
     const modal = document.getElementById('nearby-modal');
     if (!modal) return;
     modal.classList.remove('hidden');
-    
+
     const container = document.getElementById('nearby-list-container');
     const subtitle = document.getElementById('nearby-modal-subtitle');
     if (!container || !subtitle) return;
-    
-    // Check local storage first
-    let cachedList = localStorage.getItem('nearby_species');
-    let cachedLat = localStorage.getItem('nearby_lat');
-    let cachedLon = localStorage.getItem('nearby_lon');
-    
-    let needsFetch = true;
-    let currentCoords = null;
-    
+
     subtitle.textContent = "Obteniendo ubicación...";
     container.innerHTML = `
         <div class="flex flex-col items-center justify-center py-12 text-slate-400">
-            <div class="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-blue-500 mb-4"></div>
-            <p class="text-sm font-medium">Buscando especies en tu área...</p>
+            <div class="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-emerald-500 mb-4"></div>
+            <p class="text-sm font-medium">Buscando plantas y fauna reales en tu zona...</p>
         </div>
     `;
 
     try {
-        currentCoords = await new Promise((resolve, reject) => {
-            if (!navigator.geolocation) return reject(new Error("Geolocalización no soportada"));
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-                (err) => reject(new Error("Se necesita permiso de ubicación para buscar especies cercanas.")),
-                { timeout: 8000, enableHighAccuracy: true }
-            );
-        });
+        const result = await loadNearbySpecies();
+        lastNearbyList = result.list || [];
+        subtitle.textContent = result.fromCache
+            ? `Cerca de ti · caché ${result.place || ''}`.trim()
+            : `Observaciones reales · ${result.place || 'tu zona'}`;
+        applyDailyPlantHunt(lastNearbyList);
+        renderNearbyList(lastNearbyList);
     } catch (err) {
-        showMessage(err.message);
+        showMessage(err.message || "No se pudo cargar la caza de zona.");
         modal.classList.add('hidden');
-        return;
     }
+}
 
-    if (cachedList && cachedLat && cachedLon) {
-        const dist = getDistance(currentCoords.lat, currentCoords.lon, parseFloat(cachedLat), parseFloat(cachedLon));
-        if (dist < 1.0) {
-            needsFetch = false;
+async function prefetchNearbyQuiet() {
+    try {
+        const result = await loadNearbySpecies();
+        lastNearbyList = result.list || [];
+        applyDailyPlantHunt(lastNearbyList);
+    } catch (e) {
+        /* silencioso: el usuario aún no ha dado ubicación */
+    }
+}
+
+function readNearbyCache() {
+    try {
+        const raw = localStorage.getItem('nearby_v2');
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeNearbyCache(lat, lon, list, place) {
+    localStorage.setItem('nearby_v2', JSON.stringify({
+        lat, lon, list, place, ts: Date.now()
+    }));
+}
+
+async function loadNearbySpecies() {
+    const coords = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error("Geolocalización no soportada"));
+        navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+            () => reject(new Error("Se necesita permiso de ubicación para la caza de zona.")),
+            { timeout: 8000, enableHighAccuracy: false }
+        );
+    });
+
+    const cached = readNearbyCache();
+    if (cached?.list?.length && cached.lat != null && cached.lon != null) {
+        const dist = getDistance(coords.lat, coords.lon, cached.lat, cached.lon);
+        const fresh = (Date.now() - (cached.ts || 0)) < NEARBY_CACHE_MS;
+        if (fresh && dist < 12) {
+            return { list: cached.list, fromCache: true, place: cached.place || '' };
         }
     }
 
-    let speciesList = [];
-    if (needsFetch) {
-        subtitle.textContent = "Consultando IA...";
-        try {
-            // Get location name
-            let locationName = "Ubicación desconocida";
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lon}&zoom=10`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.address) {
-                        const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
-                        const state = data.address.state || data.address.country || "";
-                        locationName = [city, state].filter(Boolean).join(", ");
-                    }
-                }
-            } catch (e) {
-                console.error("Error Nominatim", e);
+    let place = "tu zona";
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lon}&zoom=10`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.address) {
+                const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
+                const state = data.address.state || data.address.country || "";
+                place = [city, state].filter(Boolean).join(", ") || place;
             }
-
-            const response = await fetch(WORKER_API_URL.replace('/api/scan', '/api/nearby'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    lat: currentCoords.lat,
-                    lon: currentCoords.lon,
-                    location: locationName
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error("No se pudo obtener el listado de especies cercanas.");
-            }
-
-            speciesList = await response.json();
-            if (speciesList.error) {
-                throw new Error(speciesList.error);
-            }
-
-            // Save in localStorage
-            localStorage.setItem('nearby_species', JSON.stringify(speciesList));
-            localStorage.setItem('nearby_lat', currentCoords.lat);
-            localStorage.setItem('nearby_lon', currentCoords.lon);
-            subtitle.textContent = `Generado para: ${locationName}`;
-        } catch (err) {
-            showMessage(err.message);
-            modal.classList.add('hidden');
-            return;
         }
-    } else {
-        speciesList = JSON.parse(cachedList);
-        subtitle.textContent = "Cargado de caché local (<1km)";
+    } catch (e) {
+        console.error("Error Nominatim", e);
     }
 
-    renderNearbyList(speciesList);
+    const response = await fetch(WORKER_API_URL.replace('/api/scan', '/api/nearby'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: coords.lat, lon: coords.lon, location: place })
+    });
+    if (!response.ok) throw new Error("No se pudo obtener el listado de especies cercanas.");
+    const speciesList = await response.json();
+    if (speciesList.error) throw new Error(speciesList.error);
+
+    if (Array.isArray(speciesList) && speciesList.length) {
+        writeNearbyCache(coords.lat, coords.lon, speciesList, place);
+    }
+    return { list: Array.isArray(speciesList) ? speciesList : [], fromCache: false, place };
 }
 
 function getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; // distance in km
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function matchesNearbyFilter(sp, discovered) {
+    const cat = sp.categoria || 'Otro';
+    if (nearbyFilter === 'plantas') return cat === 'Plantas';
+    if (nearbyFilter === 'animales') return !['Plantas', 'Hongos'].includes(cat);
+    if (nearbyFilter === 'pendientes') return !discovered;
+    if (nearbyFilter === 'raras') return (sp.rareza || '').includes('rara') || ['NT', 'VU', 'EN', 'CR', 'EW', 'EX'].includes(sp.estado);
+    return true;
+}
+
+function updateNearbyProgress(list) {
+    const found = list.filter(sp => hasSpecies(sp.especie, sp.nombre)).length;
+    const txt = document.getElementById('nearby-progress-text');
+    const bar = document.getElementById('nearby-progress-bar');
+    if (txt) txt.textContent = `${found}/${list.length}`;
+    if (bar) bar.style.width = list.length ? `${(found / list.length) * 100}%` : '0%';
+}
+
+function renderNearbyHuntBanner(list) {
+    const banner = document.getElementById('nearby-hunt-banner');
+    if (!banner) return;
+    const targets = getDailyPlantHunt(list);
+    if (!targets.length) {
+        banner.classList.add('hidden');
+        banner.innerHTML = '';
+        return;
+    }
+    const done = targets.filter(t => hasSpecies(t.especie, t.nombre)).length;
+    banner.classList.remove('hidden');
+    banner.innerHTML = `
+        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-3">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Objetivos de hoy</p>
+                <span class="text-[11px] font-bold text-emerald-600">${done}/3 cazadas</span>
+            </div>
+            <div class="flex gap-2 overflow-x-auto hide-scrollbar">
+                ${targets.map(t => {
+                    const got = hasSpecies(t.especie, t.nombre);
+                    return `<div class="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border ${got ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-800 border-emerald-200'}">${got ? '✓ ' : '◎ '}${t.nombre}</div>`;
+                }).join('')}
+            </div>
+        </div>
+    `;
 }
 
 function renderNearbyList(speciesList) {
     const container = document.getElementById('nearby-list-container');
     if (!container) return;
+    const list = speciesList || [];
+    lastNearbyList = list;
+    updateNearbyProgress(list);
+    renderNearbyHuntBanner(list);
     container.innerHTML = '';
 
-    speciesList.forEach(sp => {
+    const huntTargets = getDailyPlantHunt(list);
+    const filtered = list.filter(sp => matchesNearbyFilter(sp, hasSpecies(sp.especie, sp.nombre)));
+    if (!list.length) {
+        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-10">Aún no hay observaciones cerca. ¡Sal a escanear y sé el primero!</p>`;
+        return;
+    }
+    if (!filtered.length) {
+        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-10">Nada en este filtro. Prueba con Plantas o Todas.</p>`;
+        return;
+    }
+
+    filtered.forEach(sp => {
         const discovered = hasSpecies(sp.especie, sp.nombre);
+        const isTarget = huntTargets.some(t => t.especie === sp.especie);
         const card = document.createElement('div');
-        card.className = `flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border ${discovered ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-100'} transition-all cursor-pointer`;
-        
-        const uniqueId = `nearby-img-${sp.especie.replace(/\s+/g, '-')}`;
-        
+        card.className = `flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${discovered ? 'border-emerald-200 bg-emerald-50/40' : isTarget ? 'border-lime-300 bg-lime-50 hunt-pulse' : 'border-slate-100 bg-slate-50 hover:bg-slate-100'}`;
+        const imgSrc = sp.foto || PLACEHOLDER_IMG;
+        const obs = sp.observaciones ? `${sp.observaciones} vistas` : '';
+        const rarity = sp.rareza || '';
+
         card.innerHTML = `
             <div class="flex items-center gap-3 flex-1 min-w-0">
-                <div class="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-slate-200 relative shadow-inner flex items-center justify-center">
-                    <img id="${uniqueId}" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=80&q=80" alt="Foto">
+                <div class="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-slate-200 relative shadow-inner">
+                    <img class="w-full h-full object-cover ${discovered ? '' : 'nearby-locked-img'}" src="${imgSrc}" alt="">
+                    ${isTarget && !discovered ? '<span class="absolute top-1 left-1 text-[9px] font-bold bg-lime-500 text-white px-1 rounded">HOY</span>' : ''}
                 </div>
                 <div class="flex-1 min-w-0">
                     <h4 class="text-sm font-bold text-slate-800 leading-tight truncate">${sp.nombre}</h4>
                     <p class="text-xs text-slate-500 italic font-medium leading-none mt-0.5 truncate">${sp.especie}</p>
-                    <div class="flex gap-1.5 mt-1.5">
+                    <div class="flex flex-wrap gap-1.5 mt-1.5">
                         <span class="text-[9px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">${sp.categoria}</span>
-                        <span class="status-${sp.estado} text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded shadow-sm border border-black/5">${sp.estado}</span>
+                        <span class="status-${sp.estado || 'UNKNOWN'} text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded shadow-sm border border-black/5">${sp.estado || '?'}</span>
+                        ${rarity ? `<span class="text-[9px] font-semibold ${rarity.includes('rara') ? 'text-amber-700 bg-amber-100' : 'text-slate-500 bg-slate-100'} px-1.5 py-0.5 rounded">${rarity}</span>` : ''}
+                        ${obs ? `<span class="text-[9px] text-slate-400 font-medium">${obs}</span>` : ''}
                     </div>
                 </div>
             </div>
             <div class="shrink-0 ml-2">
                 ${discovered ? `
                     <span class="text-xs font-bold text-emerald-600 bg-emerald-100/50 py-1.5 px-3 rounded-xl border border-emerald-200 flex items-center gap-1">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i> Descubierta
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i> Cazada
                     </span>
                 ` : `
-                    <span class="text-xs font-semibold text-slate-400 bg-slate-100 py-1.5 px-3 rounded-xl border border-slate-200/50 flex items-center gap-1">
-                        <i data-lucide="lock" class="w-3 h-3"></i> Pendiente
+                    <span class="text-xs font-semibold text-emerald-700 bg-white py-1.5 px-3 rounded-xl border border-emerald-200 flex items-center gap-1">
+                        <i data-lucide="search" class="w-3 h-3"></i> Buscar
                     </span>
                 `}
             </div>
         `;
-        
+
         card.addEventListener('click', () => {
             const foundScan = globalScans.find(scan => {
                 const scanSci = (scan.scientificName || '').toLowerCase().trim();
@@ -1287,23 +1463,13 @@ function renderNearbyList(speciesList) {
                 return (sp.especie && scanSci === sp.especie.toLowerCase().trim()) ||
                        (sp.nombre && scanName === sp.nombre.toLowerCase().trim());
             });
-            if (foundScan) {
-                openSpeciesDetail(foundScan);
-            } else {
-                openNearbyDetail(sp);
-            }
+            if (foundScan) openSpeciesDetail(foundScan);
+            else openNearbyDetail(sp);
         });
-        
+
         container.appendChild(card);
-        
-        getSpeciesImage(sp.especie).then(src => {
-            const imgEl = document.getElementById(uniqueId);
-            if (imgEl && src) {
-                imgEl.src = src;
-            }
-        });
     });
-    
+
     lucide.createIcons();
 }
 
@@ -1316,30 +1482,75 @@ function hasSpecies(scientificName, commonName) {
     });
 }
 
-async function getSpeciesImage(scientificName) {
-    let img = await fetchWikiImage('es', scientificName);
-    if (!img) {
-        img = await fetchWikiImage('en', scientificName);
+function getDailyPlantHunt(list) {
+    const today = new Date().toDateString();
+    try {
+        const stored = JSON.parse(localStorage.getItem('plant_hunt_v1') || 'null');
+        if (stored?.date === today && stored.targets?.length) return stored.targets;
+    } catch { /* ignore */ }
+
+    const plants = (list || []).filter(s => (s.categoria || '') === 'Plantas');
+    if (!plants.length) return [];
+    const undiscovered = plants.filter(p => !hasSpecies(p.especie, p.nombre));
+    const pool = undiscovered.length ? undiscovered : plants;
+    const seed = today.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    const ranked = pool.slice().sort((a, b) => {
+        const ha = ((a.especie || '').length + seed) % 53;
+        const hb = ((b.especie || '').length + seed) % 53;
+        return ha - hb;
+    });
+    const common = pool.filter(p => (p.observaciones || 0) >= 20);
+    const rare = pool.filter(p => (p.observaciones || 0) < 8);
+    const picks = [];
+    const add = (item) => {
+        if (!item || picks.some(p => p.especie === item.especie)) return;
+        picks.push({ nombre: item.nombre, especie: item.especie, foto: item.foto || null, rareza: item.rareza || '' });
+    };
+    add(common[seed % Math.max(common.length, 1)]);
+    add(rare[seed % Math.max(rare.length, 1)]);
+    for (const p of ranked) {
+        if (picks.length >= 3) break;
+        add(p);
     }
-    return img;
+    localStorage.setItem('plant_hunt_v1', JSON.stringify({ date: today, targets: picks.slice(0, 3) }));
+    return picks.slice(0, 3);
 }
 
-async function fetchWikiImage(lang, title) {
+function applyDailyPlantHunt(list) {
+    const targets = getDailyPlantHunt(list);
+    renderPlantHuntHome(targets);
+}
+
+function renderPlantHuntHome(targets) {
+    const wrap = document.getElementById('plant-hunt-targets');
+    const prog = document.getElementById('plant-hunt-progress');
+    if (!wrap) return;
+    if (!targets?.length) {
+        wrap.innerHTML = `<p class="text-xs text-emerald-100/80">Abre Caza de plantas para cargar objetivos de tu zona.</p>`;
+        if (prog) prog.textContent = '0/3';
+        return;
+    }
+    let done = 0;
+    wrap.innerHTML = targets.map(t => {
+        const got = hasSpecies(t.especie, t.nombre);
+        if (got) done++;
+        return `<div class="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2">
+            <span class="text-sm">${got ? '✓' : '○'}</span>
+            <span class="text-sm font-semibold truncate flex-1">${t.nombre}</span>
+            <span class="text-[10px] opacity-80">${got ? '¡Cazada!' : (t.rareza || 'Sal a buscarla')}</span>
+        </div>`;
+    }).join('');
+    if (prog) prog.textContent = `${done}/3`;
+}
+
+function refreshPlantHuntProgress() {
     try {
-        const url = `https://${lang}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages&format=json&pithumbsize=150&origin=*`;
-        const res = await fetch(url);
-        if (res.ok) {
-            const data = await res.json();
-            const pages = data.query?.pages;
-            if (pages) {
-                const pageId = Object.keys(pages)[0];
-                if (pageId && pages[pageId].thumbnail) {
-                    return pages[pageId].thumbnail.source;
-                }
-            }
+        const stored = JSON.parse(localStorage.getItem('plant_hunt_v1') || 'null');
+        if (stored?.date === new Date().toDateString() && stored.targets) {
+            renderPlantHuntHome(stored.targets);
         }
-    } catch(e){}
-    return null;
+    } catch { /* ignore */ }
+    if (lastNearbyList.length) renderNearbyHuntBanner(lastNearbyList);
 }
 
 async function openNearbyDetail(sp) {
@@ -1349,41 +1560,35 @@ async function openNearbyDetail(sp) {
         categoria: sp.categoria,
         status: sp.estado,
         xpEarned: 0,
-        description: "Cargando información desde Wikipedia...",
-        habitat: "Desconocido",
-        dieta: "Desconocida",
-        locationName: "Área cercana",
-        encounterDate: "No descubierta"
+        description: "Cargando ficha de campo...",
+        habitat: "Zona cercana — sal a buscarla",
+        dieta: sp.categoria === 'Plantas' ? 'Fotosíntesis / autótrofa' : 'Desconocida',
+        locationName: "Área cercana (12 km)",
+        encounterDate: "Aún no cazada",
+        foto: sp.foto || null,
+        observaciones: sp.observaciones || null,
+        datoCurioso: sp.rareza ? `En tu zona es ${sp.rareza}${sp.observaciones ? ` (${sp.observaciones} observaciones recientes)` : ''}.` : null
     };
-    
+
     await openSpeciesDetail(mockData);
-    
+
     try {
-        const res = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(sp.especie)}`);
-        if (res.ok) {
-            const wiki = await res.json();
+        const wikiTitle = encodeURIComponent((sp.especie || '').replace(/ /g, '_'));
+        const res = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+        let wiki = null;
+        if (res.ok) wiki = await res.json();
+        else {
+            const resEn = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiTitle}`);
+            if (resEn.ok) wiki = await resEn.json();
+        }
+        if (wiki?.extract) {
             const descEl = document.getElementById('detail-desc');
-            if (descEl && wiki.extract) {
-                descEl.textContent = wiki.extract;
-            }
-            if (wiki.thumbnail && wiki.thumbnail.source) {
-                const carousel = document.getElementById('detail-carousel');
-                if (carousel) {
-                    const firstImg = carousel.querySelector('img');
-                    if (firstImg && firstImg.src.includes('unsplash.com')) {
-                        firstImg.src = wiki.thumbnail.source;
-                    }
-                }
-            }
-        } else {
-            const resEn = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(sp.especie)}`);
-            if (resEn.ok) {
-                const wikiEn = await resEn.json();
-                const descEl = document.getElementById('detail-desc');
-                if (descEl && wikiEn.extract) {
-                    descEl.textContent = wikiEn.extract;
-                }
-            }
+            if (descEl) descEl.textContent = wiki.extract;
+        }
+        if (wiki?.thumbnail?.source) {
+            const carousel = document.getElementById('detail-carousel');
+            const firstImg = carousel?.querySelector('img');
+            if (firstImg && firstImg.src.includes('unsplash.com')) firstImg.src = wiki.thumbnail.source;
         }
     } catch (e) {
         console.error("Error cargando summary de Wikipedia", e);

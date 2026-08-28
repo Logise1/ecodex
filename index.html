@@ -218,7 +218,7 @@
                             class="w-full flex items-center justify-center gap-3 text-red-500 bg-red-50 hover:bg-red-100 p-4 rounded-2xl transition-colors font-bold shadow-sm">
                             <i data-lucide="log-out" class="w-5 h-5"></i> Cerrar Sesión
                     </button>
-                    <p class="text-center text-xs text-slate-400 mt-4">EcoDex v9.0 - Dashboard</p>
+                    <p class="text-center text-xs text-slate-400 mt-4">EcoDex v10.0 - Caza de plantas</p>
                 </div>
             </div>
 
@@ -238,7 +238,7 @@
                         </button>
                         <button id="btn-home-nearby"
                             class="flex items-center justify-center gap-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold py-4 px-4 rounded-2xl border border-blue-100 shadow-sm transition-all text-sm">
-                            <i data-lucide="map-pin" class="w-5 h-5"></i> Especies Cerca
+                            <i data-lucide="leaf" class="w-5 h-5"></i> Caza de plantas
                         </button>
                     </div>
                 </div>
@@ -336,6 +336,32 @@
                                         <div class="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="m3-progress"></div>
                                     </div>
                                 </div>
+                                <!-- Misión 4: plantas -->
+                                <div>
+                                    <div class="flex justify-between text-xs mb-1.5 font-medium">
+                                        <span class="text-slate-300">Fotografía 2 plantas hoy</span>
+                                        <span class="font-bold text-lime-400" id="m4-text">0/2</span>
+                                    </div>
+                                    <div class="w-full bg-slate-700 rounded-full h-2 overflow-hidden shadow-inner">
+                                        <div class="bg-gradient-to-r from-lime-500 to-emerald-400 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%;" id="m4-progress"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Caza diaria de plantas -->
+                        <div id="plant-hunt-card" class="col-span-2 bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-3xl shadow-lg text-white relative overflow-hidden cursor-pointer hover:shadow-xl transition-shadow">
+                            <div class="absolute -right-6 -bottom-8 w-28 h-28 bg-white/10 rounded-full blur-xl"></div>
+                            <div class="flex items-center justify-between mb-3 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="flower-2" class="w-5 h-5 text-lime-200"></i>
+                                    <h4 class="font-outfit font-bold">Caza de plantas de hoy</h4>
+                                </div>
+                                <span id="plant-hunt-progress" class="text-[10px] font-bold uppercase tracking-widest bg-white/15 px-2 py-1 rounded-full">0/3</span>
+                            </div>
+                            <p class="text-xs text-emerald-50/90 mb-3 relative z-10">Tres especies reales vistas cerca de ti. Encuéntralas y escanéalas.</p>
+                            <div id="plant-hunt-targets" class="space-y-2 relative z-10">
+                                <p class="text-xs text-emerald-100/80">Abre Caza de plantas para cargar objetivos de tu zona.</p>
                             </div>
                         </div>
 
@@ -503,25 +529,63 @@
                         </div>
                     </div>
 
+                    <div id="detail-fact-box" class="hidden bg-violet-50 border border-violet-100 rounded-2xl p-3">
+                        <h4 class="text-[10px] font-bold text-violet-600 uppercase mb-1 flex items-center gap-1">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> Dato curioso</h4>
+                        <p id="detail-fact" class="text-violet-900 text-sm font-medium leading-relaxed"></p>
+                    </div>
+
                     <div>
                         <h4
                             class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                             <i data-lucide="info" class="w-3 h-3 text-slate-400"></i> Descripción</h4>
                         <p id="detail-desc" class="text-slate-700 text-sm leading-relaxed"></p>
                     </div>
+
+                    <div id="detail-id-box" class="hidden bg-emerald-50 border border-emerald-100 rounded-2xl p-3">
+                        <h4 class="text-[10px] font-bold text-emerald-700 uppercase mb-1 flex items-center gap-1">
+                            <i data-lucide="eye" class="w-3 h-3"></i> Cómo reconocerla</h4>
+                        <p id="detail-recognize" class="text-emerald-900 text-sm leading-relaxed"></p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div id="detail-size-box" class="hidden bg-slate-50 border border-slate-100 rounded-xl p-3">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
+                                <i data-lucide="ruler" class="w-3 h-3"></i> Tamaño</h4>
+                            <p id="detail-size" class="text-slate-800 text-xs font-medium"></p>
+                        </div>
+                        <div id="detail-season-box" class="hidden bg-slate-50 border border-slate-100 rounded-xl p-3">
+                            <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
+                                <i data-lucide="sun" class="w-3 h-3"></i> Temporada</h4>
+                            <p id="detail-season" class="text-slate-800 text-xs font-medium"></p>
+                        </div>
+                    </div>
+
+                    <div id="detail-threat-box" class="hidden bg-red-50 border border-red-100 rounded-2xl p-3">
+                        <h4 class="text-[10px] font-bold text-red-600 uppercase mb-1 flex items-center gap-1">
+                            <i data-lucide="shield-alert" class="w-3 h-3"></i> Amenazas</h4>
+                        <p id="detail-threats" class="text-red-800 text-sm leading-relaxed"></p>
+                    </div>
+
+                    <div id="detail-interact-box" class="hidden bg-amber-50 border border-amber-100 rounded-2xl p-3">
+                        <h4 class="text-[10px] font-bold text-amber-700 uppercase mb-1 flex items-center gap-1">
+                            <i data-lucide="hand" class="w-3 h-3"></i> Interactividad</h4>
+                        <p id="detail-interact" class="text-amber-900 text-sm leading-relaxed"></p>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                         <div>
                             <h4
                                 class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <i data-lucide="map" class="w-3 h-3"></i> Hábitat Biológico</h4>
+                                <i data-lucide="map" class="w-3 h-3"></i> Hábitat</h4>
                             <p id="detail-habitat"
                                 class="text-slate-700 text-sm leading-relaxed bg-amber-50 p-3 rounded-xl border border-amber-100/50 h-full">
                             </p>
                         </div>
                         <div>
-                            <h4
+                            <h4 id="detail-diet-label"
                                 class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <i data-lucide="utensils" class="w-3 h-3"></i> Dieta</h4>
+                                <i data-lucide="utensils" class="w-3 h-3"></i> <span>Dieta</span></h4>
                             <p id="detail-diet"
                                 class="text-slate-700 text-sm leading-relaxed bg-blue-50 p-3 rounded-xl border border-blue-100/50 h-full">
                             </p>
@@ -545,10 +609,8 @@
 
             <div class="w-full bg-slate-100 rounded-full h-3 mb-2 overflow-hidden shadow-inner border border-slate-200">
                 <div id="loading-progress"
-                    class="bg-gradient-to-r from-emerald-400 to-teal-500 h-full rounded-full w-0 relative overflow-hidden">
-                    <div
-                        class="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_2s_infinite]">
-                    </div>
+                    class="bg-gradient-to-r from-emerald-400 to-teal-500 h-full rounded-full relative overflow-hidden">
+                    <div class="loading-sheen absolute inset-0"></div>
                 </div>
             </div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="loading-status">Conectando
@@ -735,25 +797,47 @@
         </div>
     </div>
 
-    <!-- Modal Especies Cercanas -->
+    <!-- Modal Especies Cercanas / Caza de plantas -->
     <div id="nearby-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-opacity">
         <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] achievement-pop">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <div>
-                    <h3 class="text-xl font-outfit font-bold text-slate-800 flex items-center gap-2">
-                        <i data-lucide="map-pin" class="text-blue-500 w-6 h-6"></i> Especies Cerca
-                    </h3>
-                    <p class="text-slate-500 text-xs mt-0.5" id="nearby-modal-subtitle">Especies en tu zona (Radio 1km)</p>
+            <div class="p-5 border-b border-slate-100 bg-slate-50">
+                <div class="flex justify-between items-start gap-3">
+                    <div>
+                        <h3 class="text-xl font-outfit font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="leaf" class="text-emerald-500 w-6 h-6"></i> Caza cerca de ti
+                        </h3>
+                        <p class="text-slate-500 text-xs mt-0.5" id="nearby-modal-subtitle">Observaciones reales a 12 km</p>
+                    </div>
+                    <button id="btn-close-nearby" class="text-slate-400 hover:bg-slate-200 p-2 rounded-full transition-colors">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
                 </div>
-                <button id="btn-close-nearby" class="text-slate-400 hover:bg-slate-200 p-2 rounded-full transition-colors">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
+                <div class="mt-3">
+                    <div class="flex justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                        <span>Progreso de zona</span>
+                        <span id="nearby-progress-text">0/0</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div id="nearby-progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width:0%"></div>
+                    </div>
+                </div>
+                <div id="nearby-filters" class="flex gap-2 mt-3 overflow-x-auto hide-scrollbar">
+                    <button class="nearby-filter tab-active text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap" data-filter="plantas">Plantas</button>
+                    <button class="nearby-filter tab-inactive text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap" data-filter="todas">Todas</button>
+                    <button class="nearby-filter tab-inactive text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap" data-filter="pendientes">Pendientes</button>
+                    <button class="nearby-filter tab-inactive text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap" data-filter="raras">Raras</button>
+                    <button class="nearby-filter tab-inactive text-[11px] font-bold px-3 py-1.5 rounded-full border whitespace-nowrap" data-filter="animales">Fauna</button>
+                </div>
             </div>
+            <div id="nearby-hunt-banner" class="hidden px-5 pt-4"></div>
             <div class="p-5 overflow-y-auto space-y-3 flex-1" id="nearby-list-container">
                 <!-- Se inyecta con JS -->
             </div>
-            <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
-                <p class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">35 especies sugeridas por IA • Rango: 1km</p>
+            <div class="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+                <p class="text-[10px] text-slate-500 font-medium uppercase tracking-widest">iNaturalist · sin IA · 12 km</p>
+                <button id="btn-nearby-scan" class="text-[11px] font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-xl hover:bg-emerald-500 transition-colors flex items-center gap-1">
+                    <i data-lucide="scan" class="w-3.5 h-3.5"></i> Escanear
+                </button>
             </div>
         </div>
     </div>

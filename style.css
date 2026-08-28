@@ -154,8 +154,50 @@ h3,
     border-color: #e2e8f0;
 }
 
-.progress-bar-anim {
-    transition: width 13s cubic-bezier(0.39, 0.575, 0.565, 1);
+@keyframes loadingGrow {
+    0% { width: 6%; }
+    18% { width: 28%; }
+    42% { width: 54%; }
+    68% { width: 76%; }
+    100% { width: 92%; }
+}
+
+@keyframes loadingSheen {
+    0% { transform: translateX(-120%); }
+    100% { transform: translateX(120%); }
+}
+
+#loading-progress {
+    width: 6%;
+    min-width: 12px;
+}
+
+#loading-progress.progress-bar-anim {
+    animation: loadingGrow 9s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+#loading-progress.progress-bar-done {
+    animation: none;
+    width: 100%;
+    transition: width 0.35s ease-out;
+}
+
+.loading-sheen {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    animation: loadingSheen 1.15s ease-in-out infinite;
+}
+
+.nearby-locked-img {
+    filter: saturate(0.85);
+}
+
+@keyframes huntPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(132, 204, 22, 0.45); }
+    50% { box-shadow: 0 0 0 6px rgba(132, 204, 22, 0); }
+}
+
+.hunt-pulse {
+    animation: huntPulse 1.8s ease-out infinite;
 }
 
 @keyframes shimmer {
